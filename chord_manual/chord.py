@@ -329,18 +329,17 @@ class ChordNode:
             if address != self.ip:
                 #el nodo que entra es mayor que yo, lo pongo en mi lista para actualizar mi finger teble.
                 node = NodeReference(address, TCP_PORT)
-                if self.id < self.generate_id_(address):
-                    print("soy menor")
-                    self.finger_update_queue.put((address, TCP_PORT))
-                    if self.first:
-                        node.send_data_tcp(FIX_FINGER, self.ip)
+                # if self.id < self.generate_id_(address):
+                #     print("soy menor")
+                self.finger_update_queue.put((address, TCP_PORT))
+                node.send_data_tcp(FIX_FINGER, self.ip)
                         
-                #el nodo que entra es mayor que yo, mando una solicitud para que me ponga en su finger table
-                else:
-                    print("soy mayor")
-                    if (self.actual_first_id == self.generate_id_(node.ip)):
-                        self.finger_update_queue.put((address, TCP_PORT))
-                    node.send_data_tcp(FIX_FINGER, self.ip)
+                # #el nodo que entra es mayor que yo, mando una solicitud para que me ponga en su finger table
+                # else:
+                #     print("soy mayor")
+                #     if (self.actual_first_id == self.generate_id_(node.ip)):
+                #         self.finger_update_queue.put((address, TCP_PORT))
+                #     node.send_data_tcp(FIX_FINGER, self.ip)
             print("Solicitud propia")
             
             
@@ -405,21 +404,23 @@ class ChordNode:
         for i in range(8):
             finger_id = (self.id + 2**i) % 256
             #si el nodo nuevo es menor que el que se esta haciendo cargo
-            print(node.id)
-            print(self.finger_table[finger_id].id)
+            print(f"  Yo{self.id} Me actualizo con {node.id}")
             if node.id < self.finger_table[finger_id].id:
                 #si me puedo hacer cargo 
                 print(f"fingerid: {finger_id}")
+                print(f" actual first: {self.actual_first_id}")
+                print(f" nodo encargado del finger {finger_id} es {self.finger_table[finger_id].id} ")
                 if (finger_id) <= node.id  :
                     self.finger_table[finger_id]= node
                     print(f"[+] Finger {finger_id} actualizado a {node.id}")
-                elif self.actual_first_id== node.id:
+                
+                elif self.actual_first_id== node.id and self.finger_table[finger_id].id < (finger_id) :
                     self.finger_table[finger_id] = node
                     print(f"[+] Finger {finger_id} actualizado a {node.id}")
                     
                     
             # si el nodo es mayor que el que se esta haciendo cargo, pero este se esta haciendo cargo de un dato con id mas grande. 
-            elif self.finger_table[finger_id].id < (finger_id):
+            elif self.finger_table[finger_id].id < (finger_id) and finger_id<node.id:
                 self.finger_table[finger_id]= node
                 print(f"[+] Finger {finger_id} actualizado a {node.id}")
                 
