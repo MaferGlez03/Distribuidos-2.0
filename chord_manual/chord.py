@@ -5,6 +5,8 @@ import socket
 import threading
 import random
 import time
+from storage import Database
+from handle_data import HandleData
 TCP_PORT = 8000  # puerto de escucha del socket TCP
 UDP_PORT = 8888  # puerto de escucha del socket UDP
 # Definición de operaciones Chord
@@ -70,8 +72,89 @@ class NodeReference:
                 s.connect((self.ip, self.port))  # 🔹 Conectar al servidor TCP
                 s.sendall(f'{op}|{data}'.encode('utf-8'))  # 🔹 Enviar mensaje correctamente
                 print(f"Mensaje enviado correctamente vía TCP. Operation: {op} Data: {data}")
+                return s.recv(1024)
         except Exception as e:
             print(f"Mensaje fallido. Operation: {op} Data: {data} Error: {e}")
+
+    def find_first(self):
+        return self.send_data_tcp(FIND_FIRST, f'{self.id}')
+    
+    def request_data(self, id: int):
+        return self.send_data_tcp(REQUEST_DATA, f'{id}')
+    
+    def notify(self, id: str):
+        return self.send_data_tcp(NOTIFY, id)
+    
+    def update_finger(self, id: int, ip: str, port: int):
+        return self.send_data_tcp(UPDATE_FINGER, f'{id}|{ip}|{port}')
+    
+    def list_group_agenda(self, group_id: int) -> str:
+        response = self.send_data_tcp(LIST_GROUP_AGENDA, str(group_id))
+        return response
+    
+    def register(self, id: int, name: str, email: str, password: str) -> str:
+        response = self.send_data_tcp(REGISTER, f'{id}|{name}|{email}|{password}')
+        return response
+    def login(self, id:int,email: str, password: str) -> str:
+        response = self.send_data_tcp(LOGIN, f'{id}|{email}|{password}')
+        return response.decode()
+    def list_personal_agenda(self, user_id: int) -> str:
+        response = self.send_data_tcp(LIST_PERSONAL_AGENDA, str(user_id))
+        return response
+    
+    def list_groups(self, user_id: int) -> str:
+        response = self.send_data_tcp(LIST_GROUPS, str(user_id))
+        return response
+    
+    def add_member_to_group(self, id:int,group_id: int, user_id: int) -> str:
+        response = self.send_data_tcp(ADD_MEMBER, f'{id}|{group_id}|{user_id}')
+        return response
+    def remove_member_from_group(self,id:int, group_id: int, user_id: int) -> str:
+        response = self.send_data_tcp(REMOVE_MEMBER, f'{id}|{group_id}|{user_id}')
+        return response
+    def list_member(self,user_id: int, group_id: int) -> str:
+        response = self.send_data_tcp(LIST_MEMBER, f'{group_id}|{user_id}')
+        return response
+    
+    def create_group(self, owner_id: int, name: str) -> str:
+        response = self.send_data_tcp(CREATE_GROUP, f'{name}|{owner_id}')
+        return response
+    def delete_group(self, owner_id: int, name: str) -> str:
+        response = self.send_data_tcp(DELETE_GROUP, f'{name}|{owner_id}')
+        return response
+    def leave_group(self, owner_id: int, name: str) -> str:
+        response = self.send_data_tcp(LEAVE_GROUP, f'{name}|{owner_id}')
+        return response
+    def list_contacts(self, user_id: int) -> str:
+        response = self.send_data_tcp(LIST_CONTACTS, str(user_id))
+        return response
+    def remove_contact(self, user_id: int, contact_name: str) -> str:
+        response = self.send_data_tcp(REMOVE_CONTACT, f'{user_id}|{contact_name}')
+        return response
+    def add_contact(self, user_id: int, contact_name: str) -> str:
+        response = self.send_data_tcp(ADD_CONTACT, f'{user_id}|{contact_name}')
+        return response
+    def list_events_pending(self, user_id: int) -> str:
+        response = self.send_data_tcp(LIST_EVENTS_PENDING, str(user_id))
+        return response
+    def list_events(self, user_id: int) -> str:
+        response = self.send_data_tcp(LIST_EVENTS, str(user_id))
+        return response
+    def cancel_event(self, event_id: int) -> str:
+        response = self.send_data_tcp(CANCEL_EVENT, str(event_id))
+        return response
+    def confirm_event(self, event_id: int) -> str:
+        response = self.send_data_tcp(CONFIRM_EVENT, str(event_id))
+        return response
+    def create_event(self, event_id: int, name: str, date: str, privacy: str, group_id=None) -> str:
+        response = self.send_data_tcp(CREATE_EVENT, f'{event_id}|{name}|{date}|{privacy}|{group_id}')
+        return response
+    def create_group_event(self, event_id: int, name: str, date: str, group_id=None) -> str:
+        response = self.send_data_tcp(CREATE_GROUP_EVENT, f'{event_id}|{name}|{date}|{group_id}')
+        return response
+    def create_individual_event(self, event_id: int, name: str, date: str, owner_id: int, privacy: str, group_id=None) -> str:
+        response = self.send_data_tcp(CREATE_INDIVIDUAL_EVENT, f'{event_id}|{name}|{date}|{owner_id}|{privacy}|{group_id}')
+        return response
 
 class ChordNode:
     def __init__(self):
@@ -85,10 +168,16 @@ class ChordNode:
         self.finger_table = self.create_finger_table() # Finger table: {ID: Owner}
         self.leader = False
         self.first = False
+        self.repli_pred = ''
+        self.actual_first_id = self.id
+
+        self.handler_data = HandleData(self.id)
         self.finger_update_queue = queue.Queue()  # Cola de actualizaciones de finger table
         self.actual_first_id = self.id
         
-        # self.db = Database()
+        self.db_pred = Database()
+        self.db = Database()
+        self.db_succ = Database()
 
         threading.Thread(target=self.start_tcp_server).start()
         threading.Thread(target=self.start_broadcast).start()
@@ -123,7 +212,146 @@ class ChordNode:
         
         if option == FIX_FINGER:
             self.finger_update_queue.put((id, TCP_PORT))
-            
+            return
+
+        elif option == REGISTER:
+            id = int(data[1])
+            name = data[2]
+            email = data[3]
+            password = data[4]
+            # Procesar el registro
+            response = self.register(id, name, email, password)
+
+        elif option == LOGIN:
+            # Iniciar sesión
+            id = data[1]
+            email = data[2]
+            password = data[3]
+            response = self.login_user(id,email, password)
+        elif option == CREATE_EVENT:
+            # Crear un evento
+            event_id = int(data[1])
+            name = data[2]
+            date = data[3]
+            privacy = data[4]
+            group_id = int(data[5]) if len(data) > 5 else None
+            response = self.create_event(event_id, name, date, privacy, group_id)
+        elif option == CREATE_GROUP_EVENT:
+            # Crear un evento
+            event_id = int(data[1])
+            name = data[2]
+            date = data[3]
+            group_id = int(data[4]) if len(data) > 4 else None
+            response = self.create_group_event(event_id, name, date, group_id)
+        elif option == CREATE_INDIVIDUAL_EVENT:
+            # Crear un evento
+            event_id = int(data[1])
+            name = data[2]
+            date = data[3]
+            group_id = int(data[4]) if len(data) > 4 else None
+            response = self.create_individual_event(event_id, name, date, group_id)
+        elif option == CONFIRM_EVENT:
+            # Confirmar un evento
+            event_id = int(data[1])
+            response = self.confirm_event(event_id)
+        elif option == CANCEL_EVENT:
+            # Cancelar un evento
+            event_id = int(data[1])
+            response = self.cancel_event(event_id)
+        elif option == LIST_EVENTS:
+            # Listar eventos de un usuario
+            user_id = int(data[1])
+            response = self.list_events(user_id)
+        elif option == LIST_EVENTS_PENDING:
+            # Listar eventos de un usuario
+            user_id = int(data[1])
+            response = self.list_events_pending(user_id)
+        elif option == ADD_CONTACT:
+            # Agregar un contacto
+            user_id = int(data[1])
+            contact_name = data[2]
+            response = self.add_contact(user_id, contact_name)
+        elif option == REMOVE_CONTACT:
+            # Eliminar un contacto
+            user_id = int(data[1])
+            contact_name = data[2]
+            response = self.remove_contact(user_id, contact_name)
+        elif option == LIST_CONTACTS:
+            # Listar contactos de un usuario
+            user_id = int(data[1])
+            response = self.list_contacts(user_id)
+        elif option == CREATE_GROUP:
+            # Crear un grupo
+            name = data[1]
+            owner_id = int(data[2])
+            response = self.create_group(owner_id, name)
+        elif option == DELETE_GROUP:
+            # Crear un grupo
+            name = data[1]
+            owner_id = int(data[2])
+            response = self.delete_group(owner_id, name)
+        elif option == LEAVE_GROUP:
+            # Crear un grupo
+            name = data[1]
+            owner_id = int(data[2])
+            response = self.leave_group(owner_id, name)
+        elif option == ADD_MEMBER:
+            # Agregar un miembro a un grupo
+            id =int(data[1])
+            group_id = int(data[2])
+            user_id = int(data[3])
+            response = self.add_member_to_group(id,group_id, user_id)
+        elif option == REMOVE_MEMBER:
+            # Agregar un miembro a un grupo
+            id =int(data[1])
+            group_id = int(data[2])
+            user_id = int(data[3])
+            response = self.remove_member_from_group(id,group_id, user_id)
+        elif option == LIST_GROUPS:
+            # Listar grupos de un usuario
+            user_id = int(data[1])
+            response = self.list_group(user_id)
+        elif option == LIST_MEMBER:
+            # Listar grupos de un usuario
+            user_id = int(data[2])
+            group_id = int(data[1])
+            response = self.list_member(user_id,group_id)
+        elif option == LIST_PERSONAL_AGENDA:
+            # Listar agenda personal
+            user_id = int(data[1])
+            response = self.list_personal_agenda(user_id)
+        elif option == LIST_GROUP_AGENDA:
+            # Listar agenda grupal
+            group_id = int(data[1])
+            response = self.list_group_agenda(group_id)
+        elif option == REQUEST_DATA:
+            id = int(data[1])
+            response = self.handler_data.data(True, id)
+
+        elif option == CHECK_PREDECESSOR:
+            response = (self.handler_data.data(False) + self.predecessor.ip)
+
+            # si somos al menos 3 nodos, le mando a mi sucesor la data de mi predecesor
+            if self.predecessor.id != self.successor.id:
+                self.send_data_broadcast(DATA_PRED, self.successor.ip, self.udp_port, self.repli_pred)
+
+        elif option == FALL_SUCC:
+            ip = data[1]
+            port = int(data[2])
+            self.successor = NodeReference(ip, port)
+            response = f'ok'
+            # pido data a mi sucesor al actualizar mi posicion
+            self.request_succ_data(succ=True)
+            # si se cayo mi sucesor, le digo a su sucesor que soy su  nuevo predecesor
+            self.send_data_broadcast(UPDATE_PREDECESSOR, addr[0], UDP_PORT, f'{self.ip}|{self.tcp_port}')
+        else:
+            # Operación no reconocida
+            response = "Invalid operation"
+
+    # Enviar respuesta al cliente
+        conn.sendall(response.encode())
+        conn.close()
+
         print("conn, addr, data", conn, addr, data)
         print("option, info, ip, port", option, id)
 
@@ -335,6 +563,9 @@ class ChordNode:
                     if self.first:
                         node.send_data_tcp(FIX_FINGER, self.ip)
                         
+                    if self.first:
+                        node.send_data_tcp(FIX_FINGER, self.ip)
+                        
                 #el nodo que entra es mayor que yo, mando una solicitud para que me ponga en su finger table
                 else:
                     print("soy mayor")
@@ -343,12 +574,10 @@ class ChordNode:
                     node.send_data_tcp(FIX_FINGER, self.ip)
             print("Solicitud propia")
             
-            
-
         elif option == UPDATE_FIRST:
             old_id = int(data[3])
             print(f"CONFIRMADO: {id} es el nuevo first y {old_id} ya no es first")
-            self.actual_first_id = id
+            self.actual_first_id = id            self.actual_first_id = id
             if self.id == id: 
                 self.first = True
             elif self.id == old_id: 
@@ -391,6 +620,7 @@ class ChordNode:
                 
                 self.fix_finger_table(NodeReference(ip, port))
                 print("Finger table arreglada")
+
                 
             finally:
                 self.finger_update_queue.task_done()
@@ -460,7 +690,32 @@ class ChordNode:
         finally:
             # Cerrar el socket
             sock.close()
+
+    def _closest_preceding_node(self, id) -> NodeReference:
+        """Devuelve el nodo más cercano a un ID en la finger table."""
+        for i in range(8):
+            if (self.id + (2**i) % 256) > id:
+                return self.finger_table[i-1]
+
+    def find_first(self) -> bytes:
+        """Buscar el primer nodo."""
+        if self.leader:
+            return f'{self.successor.ip}|{self.successor.port}'.encode()
+
+        response = self.finger_table[-1].find_first()
+        return response
     
+    def request_succ_data(self, succ=False, pred=False):
+        """Preguntar a mi sucesor por data."""
+        if self.successor.id != self.id:
+            if succ:
+                response_succ = self.successor.request_data(self.id).decode()
+                self.handler_data.create(response_succ)
+
+        if pred:
+            response_pred = self.predecessor.request_data(self.id).decode()
+            self.handler_data.create(response_pred)
+        
     def set_first(self, id, port, old_id, old_port):
         print(f"{id} es el nuevo first y {old_id} ya no es first")
         op = UPDATE_FIRST
@@ -502,6 +757,417 @@ class ChordNode:
         node_info = f"{ip}"
         return int(hashlib.sha1(node_info.encode()).hexdigest(), 16) % (2 ** 8)
 
+# region DB
+
+
+    def register(self, id: int, name: str, email: str, password: str) -> str:
+        if id < self.id and not self.first:
+            # Reenviar al "first"
+            first_node_data = self.find_first().decode().split('|')
+            ip = first_node_data[0]
+            port = int(first_node_data[1])
+            first_node = NodeReference(ip, port)
+            return first_node.register(id, name, email, password)
+        else:
+            # Registrar localmente
+            return self._register(id, name, email, password)
+
+    def _register(self, id: int, name: str, email: str, password: str) -> str:
+        if (id < self.id) or (id > self.id and self.leader):
+            # Registrar en la BD local
+            success = self.db.register_user(name, email, password)[0]
+            return ("User registered", success[1]) if success else ("Failed to register user", success[1])
+        else:
+            # Reenviar al nodo más cercano
+            closest_node = self._closest_preceding_node(id)
+            return closest_node.register(id, name, email, password)
+    def login_user(self, id: int, name: str, password: str) -> str:
+        if id < self.id and not self.first:
+            # Reenviar al "first"
+            first_node_data = self.find_first().decode().split('|')
+            ip = first_node_data[0]
+            port = int(first_node_data[1])
+            first_node = NodeReference(ip, port)
+            return first_node.login(id, name, password)
+        else:
+            # Registrar localmente
+            return self._login_user(id, name, password)
+
+    def _login_user(self, id: int, name: str, password: str) -> str:
+        if (id < self.id) or (id > self.id and self.leader):
+            # Registrar en la BD local
+            success = self.db.login_user(name, password)[0]
+            return ("User logged", success[1]) if success else ("Failed to log user in", success[1])
+        else:
+            # Reenviar al nodo más cercano
+            closest_node = self._closest_preceding_node(id)
+            return closest_node.login(id, name, password)
+
+    def create_event(self, event_id: int, name: str, date: str, privacy: str, group_id=None) -> str:
+        if event_id < self.id and not self.first:
+            first_node_data = self.find_first().decode().split('|')
+            ip = first_node_data[0]
+            port = int(first_node_data[1])
+            first_node = NodeReference(ip, port)
+            return first_node.create_event(event_id, name, date, privacy, group_id)
+        else:
+            return self._create_event(event_id, name, date, privacy, group_id)
+
+    def _create_event(self, event_id: int, name: str, date: str, privacy: str, group_id=None) -> str:
+        if (event_id < self.id) or (event_id > self.id and self.leader):
+            success = self.db.create_event(
+                name, date, event_id, privacy, group_id)
+            return f"Event created: {name}" if success else f"Failed to create event {name}"
+        else:
+            closest_node = self._closest_preceding_node(event_id)
+            return closest_node.create_event(event_id, name, date, privacy, group_id)
+
+    def create_group_event(self, event_id: int, name: str, date: str, group_id=None) -> str:
+        if event_id < self.id and not self.first:
+            first_node_data = self.find_first().decode().split('|')
+            ip = first_node_data[0]
+            port = int(first_node_data[1])
+            first_node = NodeReference(ip, port)
+            return first_node.create_group_event(event_id, name, date, group_id)
+        else:
+            return self._create_group_event(event_id, name, date, group_id)
+
+    def _create_group_event(self, event_id: int, name: str, date: str, group_id=None) -> str:
+        if (event_id < self.id) or (event_id > self.id and self.leader):
+            success = self.db.create_group_event(name, date, event_id, group_id)
+            return f"Event created: {name}" if success else f"Failed to create event {name}"
+        else:
+            closest_node = self._closest_preceding_node(event_id)
+            return closest_node.create_group_event(event_id, name, date, group_id)
+
+    def create_individual_event(self, event_id: int, name: str, date: str, group_id=None) -> str:
+        if event_id < self.id and not self.first:
+            first_node_data = self.find_first().decode().split('|')
+            ip = first_node_data[0]
+            port = int(first_node_data[1])
+            first_node = NodeReference(ip, port)
+            return first_node.create_individual_event(event_id, name, date, group_id)
+        else:
+            return self._create_individual_event(event_id, name, date, group_id)
+
+    def _create_individual_event(self, event_id: int, name: str, date: str, group_id=None) -> str:
+        if (event_id < self.id) or (event_id > self.id and self.leader):
+            success = self.db.create_individual_event(name, date, event_id, group_id)
+            return f"Event created: {name}" if success else f"Failed to create event {name}"
+        else:
+            closest_node = self._closest_preceding_node(event_id)
+            return closest_node.create_individual_event(event_id, name, date, group_id)
+
+    def confirm_event(self,user_id:int, event_id: int) -> str:
+        if user_id < self.id and not self.first:
+            first_node_data = self.find_first().decode().split('|')
+            ip = first_node_data[0]
+            port = int(first_node_data[1])
+            first_node = NodeReference(ip, port)
+            return first_node.confirm_event(user_id,event_id)
+        else:
+            return self._confirm_event(user_id,event_id)
+
+    def _confirm_event(self,user_id:int, event_id: int) -> str:
+        if (user_id < self.id) or (user_id > self.id and self.leader):
+            success = self.db.confirm_event(event_id)
+            return "Event confirmed" if success else "Failed to confirm event"
+        else:
+            closest_node = self._closest_preceding_node(event_id)
+            return closest_node.confirm_event(user_id,event_id)
+
+    def cancel_event(self, user_id:int,event_id: int) -> str:
+        if user_id < self.id and not self.first:
+            first_node_data = self.find_first().decode().split('|')
+            ip = first_node_data[0]
+            port = int(first_node_data[1])
+            first_node = NodeReference(ip, port)
+            return first_node.cancel_event(user_id, event_id)
+        else:
+            return self._cancel_event(user_id, event_id)
+
+    def _cancel_event(self, user_id:int, event_id: int) -> str:
+        if (user_id < self.id) or (user_id > self.id and self.leader):
+            success = self.db.cancel_event(event_id)
+            return "Event canceled" if success else "Failed to cancel event"
+        else:
+            closest_node = self._closest_preceding_node(event_id)
+            return closest_node.cancel_event(user_id, event_id)
+
+    def list_events(self, user_id: int) -> str:
+        if user_id < self.id and not self.first:
+            first_node_data = self.find_first().decode().split('|')
+            ip = first_node_data[0]
+            port = int(first_node_data[1])
+            first_node = NodeReference(ip, port)
+            return first_node.list_events(user_id)
+        else:
+            return self._list_events(user_id)
+
+    def _list_events(self, user_id: int) -> str:
+        if (user_id < self.id) or (user_id > self.id and self.leader):
+            events = self.db.list_events(user_id)
+            events_list = []
+            for event in events:
+              events_list.append({
+                'id': event.id,
+                'name': event.name,
+                'date': event.date.strftime('%Y-%m-%d'),
+                'owner_id': event.owner_id,
+                'privacy': event.privacy,
+                'group_id': event.group_id,
+                'status': event.status
+                })
+            return "\n".join([str(event) for event in events_list])
+        else:
+            closest_node = self._closest_preceding_node(user_id)
+            return closest_node.list_events(user_id)
+          
+    def list_events_pending(self, user_id: int) -> str:
+        if user_id < self.id and not self.first:
+            first_node_data = self.find_first().decode().split('|')
+            ip = first_node_data[0]
+            port = int(first_node_data[1])
+            first_node = NodeReference(ip, port)
+            return first_node.list_events_pending(user_id)
+        else:
+            return self._list_events_pending(user_id)
+
+    def _list_events_pending(self, user_id: int) -> str:
+        if (user_id < self.id) or (user_id > self.id and self.leader):
+            events = self.db.list_events_pending(user_id)
+            events_list = []
+            for event in events:
+              events_list.append({
+                'id': event.id,
+                'name': event.name,
+                'date': event.date.strftime('%Y-%m-%d'),
+                'owner_id': event.owner_id,
+                'privacy': event.privacy,
+                'group_id': event.group_id,
+                'status': event.status
+                })
+            return "\n".join([str(event) for event in events_list])
+        else:
+            closest_node = self._closest_preceding_node(user_id)
+            return closest_node.list_events_pending(user_id)
+
+    def add_contact(self, user_id: int, contact_name: str, owner_id: int) -> str:
+        if user_id < self.id and not self.first:
+            first_node_data = self.find_first().decode().split('|')
+            ip = first_node_data[0]
+            port = int(first_node_data[1])
+            first_node = NodeReference(ip, port)
+            return first_node.add_contact(user_id, contact_name, owner_id)
+        else:
+            return self._add_contact(user_id, contact_name, owner_id)
+
+    def _add_contact(self, user_id: int, contact_name: str, owner_id: int) -> str:
+        if (user_id < self.id) or (user_id > self.id and self.leader):
+            success = self.db.add_contact(user_id, contact_name, owner_id)
+            return "Contact added" if success else "Failed to add contact"
+        else:
+            closest_node = self._closest_preceding_node(user_id)
+            return closest_node.add_contact(user_id, contact_name, owner_id)
+
+    def remove_contact(self, user_id: int, contact_id: int) -> str:
+        if user_id < self.id and not self.first:
+            first_node_data = self.find_first().decode().split('|')
+            ip = first_node_data[0]
+            port = int(first_node_data[1])
+            first_node = NodeReference(ip, port)
+            return first_node.remove_contact(user_id, contact_id)
+        else:
+            return self._remove_contact(user_id, contact_id)
+
+    def _remove_contact(self, user_id: int, contact_id: int) -> str:
+        if (user_id < self.id) or (user_id > self.id and self.leader):
+            success = self.db.delete_contact(contact_id)
+            return "Contact removed" if success else "Failed to remove contact"
+        else:
+            closest_node = self._closest_preceding_node(user_id)
+            return closest_node.remove_contact(user_id, contact_id)
+
+    def list_contacts(self, user_id: int) -> str:
+        if user_id < self.id and not self.first:
+            first_node_data = self.find_first().decode().split('|')
+            ip = first_node_data[0]
+            port = int(first_node_data[1])
+            first_node = NodeReference(ip, port)
+            return first_node.list_contacts(user_id)
+        else:
+            return self._list_contacts(user_id)
+
+    def _list_contacts(self, user_id: int) -> str:
+        if (user_id < self.id) or (user_id > self.id and self.leader):
+            contacts = self.db.list_contacts(user_id)
+            return "\n".join(contacts)
+        else:
+            closest_node = self._closest_preceding_node(user_id)
+            return closest_node.list_contacts(user_id)
+
+    def create_group(self, owner_id:int, name: str) -> str:
+        if owner_id < self.id and not self.first:
+            first_node_data = self.find_first().decode().split('|')
+            ip = first_node_data[0]
+            port = int(first_node_data[1])
+            first_node = NodeReference(ip, port)
+            return first_node.create_group(owner_id, name)
+        else:
+            return self._create_group(owner_id, name)
+
+    def _create_group(self, owner_id:int, name: str) -> str:
+        if (owner_id < self.id) or (owner_id > self.id and self.leader):
+            success = self.db.create_group(name, owner_id)
+            return "Group created" if success else "Failed to create group"
+        else:
+            closest_node = self._closest_preceding_node(owner_id)
+            return closest_node.create_group(owner_id, name)
+    def delete_group(self, owner_id: int, name: str,) -> str:
+        if owner_id < self.id and not self.first:
+            first_node_data = self.find_first().decode().split('|')
+            ip = first_node_data[0]
+            port = int(first_node_data[1])
+            first_node = NodeReference(ip, port)
+            return first_node.delete_group(owner_id, name)
+        else:
+            return self._delete_group(owner_id, name)
+
+    def _delete_group(self, owner_id:int, name: str) -> str:
+        if (owner_id < self.id) or (owner_id > self.id and self.leader):
+            success = self.db.delete_group(name)
+            return "Group deleted" if success else "Failed to delete group"
+        else:
+            closest_node = self._closest_preceding_node(owner_id)
+            return closest_node.delete_group(owner_id, name)
+    def leave_group(self, name: str, owner_id: int) -> str:
+        if owner_id < self.id and not self.first:
+            first_node_data = self.find_first().decode().split('|')
+            ip = first_node_data[0]
+            port = int(first_node_data[1])
+            first_node = NodeReference(ip, port)
+            return first_node.leave_group(owner_id, name)
+        else:
+            return self._leave_group(owner_id, name)
+
+    def _leave_group(self, owner_id:int, name: str) -> str:
+        if (owner_id < self.id) or (owner_id > self.id and self.leader):
+            success = self.db.leave_group(name)
+            return "Group leaved" if success else "Failed to leave group"
+        else:
+            closest_node = self._closest_preceding_node(owner_id)
+            return closest_node.leave_group(owner_id, name)
+
+    def add_member_to_group(self,id:int, group_id: int, user_id: int,role) -> str:
+        if id < self.id and not self.first:
+            first_node_data = self.find_first().decode().split('|')
+            ip = first_node_data[0]
+            port = int(first_node_data[1])
+            first_node = NodeReference(ip, port)
+            return first_node.add_member_to_group(id,group_id, user_id, role)
+        else:
+            return self._add_member_to_group(id,group_id, user_id, role)
+
+    def _add_member_to_group(self,id:int, group_id: int, user_id: int,role) -> str:
+        if (id < self.id) or (id > self.id and self.leader):
+            success = self.db.add_member_to_group(group_id, user_id, role)
+            return "Member added" if success else "Failed to add member"
+        else:
+            closest_node = self._closest_preceding_node(id)
+            return closest_node.add_member_to_group(id,group_id, user_id,role)
+          
+    def remove_member_from_group(self,id:int, group_id: int, user_id: int) -> str:
+        if id < self.id and not self.first:
+            first_node_data = self.find_first().decode().split('|')
+            ip = first_node_data[0]
+            port = int(first_node_data[1])
+            first_node = NodeReference(ip, port)
+            return first_node.remove_member_from_group(id,group_id, user_id)
+        else:
+            return self._remove_member_from_group(id,group_id, user_id)
+
+    def _remove_member_from_group(self,id:int, group_id: int, user_id: int) -> str:
+        if (id < self.id) or (id > self.id and self.leader):
+            success = self.db.remove_member_from_group(group_id, user_id)
+            return "Member removed" if success else "Failed to remove member"
+        else:
+            closest_node = self._closest_preceding_node(id)
+            return closest_node.remove_member_from_group(id,group_id, user_id)
+
+    def list_group(self, user_id: int) -> str:
+        if user_id < self.id and not self.first:
+            first_node_data = self.find_first().decode().split('|')
+            ip = first_node_data[0]
+            port = int(first_node_data[1])
+            first_node = NodeReference(ip, port)
+            return first_node.list_groups(user_id)
+        else:
+            return self._list_group(user_id)
+
+    def _list_group(self, user_id: int) -> str:
+        if (user_id < self.id) or (user_id > self.id and self.leader):
+            agenda = self.db.list_groups(user_id)
+            groups_list = [{'id': g[0], 'name': g[1]} for g in agenda]
+            return "\n".join(groups_list)
+        else:
+            closest_node = self._closest_preceding_node(user_id)
+            return closest_node.list_groups(user_id)
+          
+    def list_member(self, user_id: int, group_id:int) -> str:
+        if user_id < self.id and not self.first:
+            first_node_data = self.find_first().decode().split('|')
+            ip = first_node_data[0]
+            port = int(first_node_data[1])
+            first_node = NodeReference(ip, port)
+            return first_node.list_member(user_id, group_id)
+        else:
+            return self._list_member(user_id, group_id)
+
+    def _list_member(self, user_id: int, group_id:int) -> str:
+        if (user_id < self.id) or (user_id > self.id and self.leader):
+            agenda = self.db.list_members(group_id)
+            return "\n".join(agenda)
+        else:
+            closest_node = self._closest_preceding_node(user_id)
+            return closest_node.list_member(user_id,group_id)
+    def list_personal_agenda(self, user_id: int) -> str:
+        if user_id < self.id and not self.first:
+            first_node_data = self.find_first().decode().split('|')
+            ip = first_node_data[0]
+            port = int(first_node_data[1])
+            first_node = NodeReference(ip, port)
+            return first_node.list_personal_agenda(user_id)
+        else:
+            return self._list_personal_agenda(user_id)
+
+    def _list_personal_agenda(self, user_id: int) -> str:
+        if (user_id < self.id) or (user_id > self.id and self.leader):
+            agenda = self.db.list_personal_agenda(user_id)
+            return "\n".join(agenda)
+        else:
+            closest_node = self._closest_preceding_node(user_id)
+            return closest_node.list_personal_agenda(user_id)
+
+    def list_group_agenda(self, group_id: int) -> str:
+        if group_id < self.id and not self.first:
+            first_node_data = self.find_first().decode().split('|')
+            ip = first_node_data[0]
+            port = int(first_node_data[1])
+            first_node = NodeReference(ip, port)
+            return first_node.list_group_agenda(group_id)
+        else:
+            return self._list_group_agenda(group_id)
+
+    def _list_group_agenda(self, group_id: int) -> str:
+        if (group_id < self.id) or (group_id > self.id and self.leader):
+            agenda = self.db.list_group_agenda(group_id)
+            return "\n".join(agenda)
+        else:
+            closest_node = self._closest_preceding_node(group_id)
+            return closest_node.list_group_agenda(group_id)
+# end region
+
 
 if __name__ == "__main__":
+    print("SI ES SI ES SI ES SI ES")
     server = ChordNode()
