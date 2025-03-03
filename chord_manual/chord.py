@@ -86,6 +86,7 @@ class ChordNode:
         self.leader = False
         self.first = False
         self.finger_update_queue = queue.Queue()  # Cola de actualizaciones de finger table
+        self.actual_first_id = self.id
         
         # self.db = Database()
 
@@ -94,7 +95,7 @@ class ChordNode:
         threading.Thread(target=self.handle_finger_table).start()
 
         self.join()
-
+        
     def start_tcp_server(self):
         """Iniciar el servidor TCP."""
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -122,8 +123,7 @@ class ChordNode:
         
         if option == FIX_FINGER:
             self.finger_update_queue.put((id, TCP_PORT))
-
-
+            
         print("conn, addr, data", conn, addr, data)
         print("option, info, ip, port", option, id)
 
@@ -325,15 +325,21 @@ class ChordNode:
                 self.predecessor = NodeReference(new_id, new_port, True)
                 
         elif option == FIX_FINGER:
+            
             if address != self.ip:
                 #el nodo que entra es mayor que yo, lo pongo en mi lista para actualizar mi finger teble.
+                node = NodeReference(address, TCP_PORT)
                 if self.id < self.generate_id_(address):
                     print("soy menor")
                     self.finger_update_queue.put((address, TCP_PORT))
+                    if self.first:
+                        node.send_data_tcp(FIX_FINGER, self.ip)
+                        
                 #el nodo que entra es mayor que yo, mando una solicitud para que me ponga en su finger table
                 else:
                     print("soy mayor")
-                    node = NodeReference(address, TCP_PORT)
+                    if (self.actual_first_id == self.generate_id_(node.ip)):
+                        self.finger_update_queue.put((address, TCP_PORT))
                     node.send_data_tcp(FIX_FINGER, self.ip)
             print("Solicitud propia")
             
@@ -342,7 +348,7 @@ class ChordNode:
         elif option == UPDATE_FIRST:
             old_id = int(data[3])
             print(f"CONFIRMADO: {id} es el nuevo first y {old_id} ya no es first")
-
+            self.actual_first_id = id
             if self.id == id: 
                 self.first = True
             elif self.id == old_id: 
@@ -385,8 +391,10 @@ class ChordNode:
                 
                 self.fix_finger_table(NodeReference(ip, port))
                 print("Finger table arreglada")
+                
             finally:
                 self.finger_update_queue.task_done()
+                self.print_finger_table()
             
 
     def fix_finger_table(self,node:NodeReference):
@@ -403,14 +411,18 @@ class ChordNode:
                 #si me puedo hacer cargo 
                 print(f"fingerid: {finger_id}")
                 if (finger_id) <= node.id  :
-                    self.finger_table[finger_id].id = node
+                    self.finger_table[finger_id]= node
                     print(f"[+] Finger {finger_id} actualizado a {node.id}")
-                    self.print_finger_table()
+                elif self.actual_first_id== node.id:
+                    self.finger_table[finger_id] = node
+                    print(f"[+] Finger {finger_id} actualizado a {node.id}")
+                    
+                    
             # si el nodo es mayor que el que se esta haciendo cargo, pero este se esta haciendo cargo de un dato con id mas grande. 
             elif self.finger_table[finger_id].id < (finger_id):
                 self.finger_table[finger_id]= node
                 print(f"[+] Finger {finger_id} actualizado a {node.id}")
-                self.print_finger_table()
+                
     
 
     def print_finger_table(self):
