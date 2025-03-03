@@ -22,6 +22,7 @@ UPDATE_FINGER = 'upd_fin'
 UPDATE_SUCC = 'upd_suc'
 UPDATE_LEADER = 'upd_leader'
 UPDATE_FIRST = 'upd_first'
+UPDATE_FIRST_TOTAL = 'upd_first_total'
 DATA_PRED = 'dat_prd'
 FALL_SUCC = 'fal_suc'
 
@@ -577,7 +578,7 @@ class ChordNode:
         elif option == UPDATE_FIRST:
             old_id = int(data[3])
             print(f"CONFIRMADO: {id} es el nuevo first y {old_id} ya no es first")
-            self.actual_first_id = id            self.actual_first_id = id
+            self.actual_first_id = id
             if self.id == id: 
                 self.first = True
             elif self.id == old_id: 
@@ -592,6 +593,12 @@ class ChordNode:
             elif self.id == old_id: 
                 self.leader = False
 
+        elif option == FIND_FIRST:
+            if self.first:
+                self.get_first(self.id, self.tcp_port)
+            
+        elif option == UPDATE_FIRST_TOTAL:
+            self.actual_first_id = id
 
     def join(self):
         op = JOIN
@@ -726,6 +733,18 @@ class ChordNode:
         print(f"{id} es el nuevo lider y {old_id} ya no es lider")
         op = UPDATE_LEADER
         data = f'{id}|{port}|{old_id}|{old_port}'
+        self.send_data_broadcast(op, data)
+    
+    def request_first(self):
+        print("BUSCANDO FIRST")
+        op = FIND_FIRST
+        data = f'{0}|{0}'
+        self.send_data_broadcast(op, data)
+
+    def get_first(self, id, port):
+        print(f"FIRST ACTUAL: {id}")
+        op = UPDATE_FIRST_TOTAL
+        data = f'{id}|{port}'
         self.send_data_broadcast(op, data)
 
     def get_ip(self) -> str:
