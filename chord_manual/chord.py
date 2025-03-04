@@ -76,6 +76,7 @@ class NodeReference:
                 return s.recv(1024)
         except Exception as e:
             print(f"Mensaje fallido. Operation: {op} Data: {data} Error: {e}")
+            return False
 
     def find_first(self):
         return self.send_data_tcp(FIND_FIRST, f'{self.id}')
@@ -164,16 +165,18 @@ class ChordNode:
         self.tcp_port = TCP_PORT
         self.udp_port = UDP_PORT
         self.predecessor = NodeReference(self.ip, self.tcp_port)
-        self.succesor = NodeReference(self.ip, self.tcp_port)
+        self.successor = NodeReference(self.ip, self.tcp_port)
         self.ip_table = {} # IPs table: {ID: {IP, port}}
         self.finger_table = self.create_finger_table() # Finger table: {ID: Owner}
         self.leader = False
         self.first = False
         self.repli_pred = ''
+        self.repli_pred_pred = ''
         self.actual_first_id = self.id
 
         self.handler_data = HandleData(self.id)
-        self.finger_update_queue = queue.Queue()  # Cola de actualizaciones de finger table
+        self.finger_update_queue = queue.Queue()# Cola de actualizaciones de finger table
+        self.finger_update_fall_queue = queue.Queue() # Cola de actualizaciones de finger table cuando se cae un nodo
        
         
         self.db_pred = Database()
@@ -183,6 +186,7 @@ class ChordNode:
         threading.Thread(target=self.start_tcp_server).start()
         threading.Thread(target=self.start_broadcast).start()
         threading.Thread(target=self.handle_finger_table).start()
+        threading.Thread(target=self.handle_finger_table_update).start()
 
         self.join()
         
@@ -214,6 +218,7 @@ class ChordNode:
         if option == FIX_FINGER:
             self.finger_update_queue.put((id, TCP_PORT))
             return
+        
 
         elif option == REGISTER:
             id = int(data[1])
@@ -330,11 +335,15 @@ class ChordNode:
             response = self.handler_data.data(True, id)
 
         elif option == CHECK_PREDECESSOR:
-            response = (self.handler_data.data(False) + self.predecessor.ip)
+            response = (self.handler_data.data(False) + self.predecessor.ip) #!AQUI EL OBJETIVO ES OBTENE LA DATA DE MI PREDECESOR
 
             # si somos al menos 3 nodos, le mando a mi sucesor la data de mi predecesor
             if self.predecessor.id != self.successor.id:
-                self.send_data_broadcast(DATA_PRED, self.successor.ip, self.udp_port, self.repli_pred)
+                self.successor.send_data_tcp(DATA_PRED, self.repli_pred)
+                
+        elif option == DATA_PRED:
+            data_ = data[1]
+            self.repli_pred_pred = data_ #!AQUI TAL VEZ HAY Q CAMBIAR LA LOGICA POR LA FORMA DE REPLICAR
 
         elif option == FALL_SUCC:
             ip = data[1]
@@ -342,9 +351,14 @@ class ChordNode:
             self.successor = NodeReference(ip, port)
             response = f'ok'
             # pido data a mi sucesor al actualizar mi posicion
-            self.request_succ_data(succ=True)
+            self.request_succ_data(succ=True) #!ESTO es lo del balanceo de carga
             # si se cayo mi sucesor, le digo a su sucesor que soy su  nuevo predecesor
-            self.send_data_broadcast(UPDATE_PREDECESSOR, addr[0], UDP_PORT, f'{self.ip}|{self.tcp_port}')
+            self.successor.send_data_tcp(UPDATE_PREDECESSOR, f'{self.ip}|{self.tcp_port}')
+        elif option == UPDATE_PREDECESSOR:
+            ip = data[1]
+            port = int(data[2])
+            self.predecessor = NodeReference(ip, port)
+            
         else:
             # Operación no reconocida
             response = "Invalid operation"
@@ -359,8 +373,28 @@ class ChordNode:
     def check_predecessor(self):
         while True:
             if self.predecessor.id != self.id:
-                pass
-         
+                
+                data = self.predecessor.send_data_tcp(CHECK_PREDECESSOR, f'0|0')
+                if data:
+                    self.repli_pred= data.decode()
+                    ip_pred_pred = self.repli_pred.split('|')[-1]
+                else:
+                    print(f"El servidor {self.predecessor.ip} se ha desconectado")
+                    #!Replicar en la bd la info del predecesor
+                    
+                    self.send_data_broadcast(UPDATE_FINGER, f"{self.predecessor.id}|{self.ip}|{TCP_PORT}")
+                    if self.predecessor.id != self.successor.id: #somos al menos 3
+                        try:  
+                            #tratamos de conectarnos con el predecesor de nuestro predecesor para comunicarle que se cayo su sucesor
+                            #seguimos el mismo proceso
+                            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                              s.connect((ip_pred_pred, TCP_PORT))
+                              s.settimeout(5)
+                              s.sendall(f'{FALL_SUCC}|{self.ip}|{self.tcp_port}')
+                              s.recv(1024).decode()
+
+                        except:
+                            pass
 
     def send_data_broadcast(self, op, data):
         """
@@ -427,9 +461,9 @@ class ChordNode:
             if self.id == id:
                 pass
             # Me estoy uniendo a una red donde solo hay un nodo
-            elif self.id == self.succesor.id and self.id == self.predecessor.id:
+            elif self.id == self.successor.id and self.id == self.predecessor.id:
                 print(f"Me estoy uniendo a una red donde solo hay un nodo({self.id})")
-                # Actualiza mi self.succesor a id
+                # Actualiza mi self.successor a id
                 op = UPDATE_SUCC
                 data = f'{self.id}|{self.tcp_port}|{id}|{port}'
                 self.send_data_broadcast(op, data)
@@ -457,7 +491,7 @@ class ChordNode:
                     self.set_first(self.id, self.tcp_port, id, port)
                     self.set_leader(id, port, self.id, self.tcp_port)
 
-                print("self.ip, self.predecessor.ip, self.succesor.ip: ", self.ip, self.predecessor.ip, self.succesor.ip)
+                print("self.ip, self.predecessor.ip, self.successor.ip: ", self.ip, self.predecessor.ip, self.successor.ip)
         # Hay 2 nodos o mas
             # Esta entre yo y mi predecesor
             elif self.id > id and self.predecessor.id < id:
@@ -481,7 +515,7 @@ class ChordNode:
                 op = UPDATE_PREDECESSOR
                 data = f'{id}|{port}|{self.predecessor.id}|{self.predecessor.port}'
                 self.send_data_broadcast(op, data)
-                print("self.ip, self.predecessor.ip, self.succesor.ip: ", self.ip, self.predecessor.ip, self.succesor.ip)
+                print("self.ip, self.predecessor.ip, self.successor.ip: ", self.ip, self.predecessor.ip, self.successor.ip)
             
             # Es menor que yo y soy el first
             elif self.id > id and self.first: 
@@ -510,7 +544,7 @@ class ChordNode:
                 # Actualizo first
                 self.set_first(id, port, self.id, self.tcp_port)
 
-                print("self.ip, self.predecessor.ip, self.succesor.ip: ", self.ip, self.predecessor.ip, self.succesor.ip)
+                print("self.ip, self.predecessor.ip, self.successor.ip: ", self.ip, self.predecessor.ip, self.successor.ip)
             
             # Es mayor que yo y soy el leader
             elif self.id < id and self.leader:
@@ -518,7 +552,7 @@ class ChordNode:
                 #? Cambiar segunda condicion por self.leader cuando este listo
                 # Actualiza el sucesor del nodo entrante por mi sucesor
                 op = UPDATE_SUCC
-                data = f'{id}|{port}|{self.succesor.id}|{self.succesor.port}'
+                data = f'{id}|{port}|{self.successor.id}|{self.successor.port}'
                 self.send_data_broadcast(op, data)
                 
                 # Actualiza el predecesor del nodo entrante por mi
@@ -533,21 +567,21 @@ class ChordNode:
 
                 # Actualiza el predecesor de mi sucesor por el nodo entrante
                 op = UPDATE_PREDECESSOR
-                data = f'{self.succesor.id}|{self.succesor.port}|{id}|{port}'
+                data = f'{self.successor.id}|{self.successor.port}|{id}|{port}'
                 self.send_data_broadcast(op, data)
 
                 # Actualizo leader
                 self.set_leader(id, port, self.id, self.tcp_port)
                 
-                print("self.ip, self.predecessor.ip, self.succesor.ip: ", self.ip, self.predecessor.ip, self.succesor.ip)
+                print("self.ip, self.predecessor.ip, self.successor.ip: ", self.ip, self.predecessor.ip, self.successor.ip)
         
         elif option == UPDATE_SUCC:
             new_id = int(data[3])
             new_port = int(data[4])
-            print("CHECK SUCCESOR: ", self.id, id, self.id == id, new_id, new_port)
+            print("CHECK successor: ", self.id, id, self.id == id, new_id, new_port)
             if self.id == id:
                 print("UPDATE_SUCC")
-                self.succesor = NodeReference(new_id, new_port, True)
+                self.successor = NodeReference(new_id, new_port, True)
 
         elif option == UPDATE_PREDECESSOR:
             new_id = int(data[3])
@@ -599,6 +633,10 @@ class ChordNode:
             
         elif option == UPDATE_FIRST_TOTAL:
             self.actual_first_id = id
+            
+        elif option == UPDATE_FINGER:
+            port_= data[3]
+            self.finger_update_fall_queue.put((id,port,port_)) #aqui port en realidad es un ip
 
     def join(self):
         op = JOIN
@@ -634,35 +672,56 @@ class ChordNode:
             finally:
                 self.finger_update_queue.task_done()
                 self.print_finger_table()
+    def handle_finger_table_update(self):   
+        """
+        Hilo que maneja las actualizaciones de la tabla de fingers.
+        """
+        while True:
+    
+            try:
+                id,ip,port = self.finger_update_fall_queue.get()
+                #print(node)
+                
+                self.fix_finger_table(NodeReference(ip, port),id)
+                print("Finger table arreglada")
+
+                
+            finally:
+                self.finger_update_fall_queue.task_done()
+                self.print_finger_table()
             
 
-    def fix_finger_table(self,node:NodeReference):
+    def fix_finger_table(self,node:NodeReference, id = None):
         """
         Corrige la tabla de fingers si un nodo deja de responder o cambia la red.
         """
         print("[!] Verificando y corrigiendo tabla de fingers...")
         for i in range(8):
             finger_id = (self.id + 2**i) % 256
-            #si el nodo nuevo es menor que el que se esta haciendo cargo
-            print(f"  Yo{self.id} Me actualizo con {node.id}")
-            print(f"fingerid: {finger_id}")
-            print(f" actual first: {self.actual_first_id}")
-            if node.id < self.finger_table[finger_id].id:
-                #si me puedo hacer cargo 
-                print(f" nodo encargado del finger {finger_id} es {self.finger_table[finger_id].id} ")
-                if (finger_id) <= node.id  :
+            if id == None:
+                #si el nodo nuevo es menor que el que se esta haciendo cargo
+                # print(f"  Yo{self.id} Me actualizo con {node.id}")
+                # print(f"fingerid: {finger_id}")
+                # print(f" actual first: {self.actual_first_id}")
+                if node.id < self.finger_table[finger_id].id:
+                    #si me puedo hacer cargo 
+                    print(f" nodo encargado del finger {finger_id} es {self.finger_table[finger_id].id} ")
+                    if (finger_id) <= node.id  :
+                        self.finger_table[finger_id]= node
+                        print(f"[+] Finger {finger_id} actualizado a {node.id}")
+
+                    elif self.actual_first_id== node.id and self.finger_table[finger_id].id < (finger_id) :
+                        self.finger_table[finger_id] = node
+                        print(f"[+] Finger {finger_id} actualizado a {node.id}")
+
+
+                # si el nodo es mayor que el que se esta haciendo cargo, pero este se esta haciendo cargo de un dato con id mas grande. 
+                elif self.finger_table[finger_id].id < (finger_id) and finger_id<node.id:
                     self.finger_table[finger_id]= node
                     print(f"[+] Finger {finger_id} actualizado a {node.id}")
-                
-                elif self.actual_first_id== node.id and self.finger_table[finger_id].id < (finger_id) :
-                    self.finger_table[finger_id] = node
-                    print(f"[+] Finger {finger_id} actualizado a {node.id}")
-                    
-                    
-            # si el nodo es mayor que el que se esta haciendo cargo, pero este se esta haciendo cargo de un dato con id mas grande. 
-            elif self.finger_table[finger_id].id < (finger_id) and finger_id<node.id:
-                self.finger_table[finger_id]= node
-                print(f"[+] Finger {finger_id} actualizado a {node.id}")
+            else:
+                if self.finger_table[finger_id]==id:
+                    self.finger_table[finger_id]= node
                 
     
 
@@ -689,7 +748,7 @@ class ChordNode:
             resultado = sock.connect_ex((ip, puerto))
             if resultado == 0:
                 print(f"[+] La IP {ip} está activa en el puerto {puerto}.")
-                print(f"{self.id}|{self.predecessor.id}|{self.succesor.id}")
+                print(f"{self.id}|{self.predecessor.id}|{self.successor.id}")
                 print(f"First: {self.first} | Leader: {self.leader}")
                 return True
             else:
