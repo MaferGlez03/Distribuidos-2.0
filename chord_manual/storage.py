@@ -5,7 +5,7 @@ from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # Configurar la base de datos SQLite
-engine = create_engine('sqlite:///agenda.db', echo=True)  # echo=True para ver las consultas SQL en la consola
+engine = create_engine('sqlite:///agenda.db', echo=False)  # echo=True para ver las consultas SQL en la consola
 Base = declarative_base()
 
 # Definir las tablas como clases

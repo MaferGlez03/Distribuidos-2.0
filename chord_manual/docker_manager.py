@@ -3,6 +3,7 @@ import os
 import argparse
 import docker
 import subprocess
+import shutil
 
 from docker.errors import ImageNotFound, BuildError, APIError
 
@@ -14,6 +15,10 @@ NETWORK_NAME = 'chord-network'
 IMAGE_NAME = 'agenda-image'
 CONTAINER_PREFIX = 'agenda-server-'
 ENV_FILE = '.env'
+
+# Ruta del volumen compartido (en el host y en el contenedor)
+VOLUME_HOST_PATH = '/media/daniman/Dani/UNI/4toano/Distribuidos/Proyecto/FinalTotal/Distribuidos-2.0/chord_manual/first'
+VOLUME_CONTAINER_PATH = '/shared'  # Ruta dentro del contenedor
 
 def read_env(file_path=ENV_FILE):
     """Lee el archivo .env y devuelve los valores de PORT y CONTAINER_INDEX"""
@@ -157,11 +162,39 @@ def run_container(index, port, detach):
     """Ejecuta un contenedor Docker con el índice y puerto proporcionados"""
     container_name = f"{CONTAINER_PREFIX}{index}"
     print(f"Starting container: {container_name}")
+
+    volumes = {
+        VOLUME_HOST_PATH: {'bind': VOLUME_CONTAINER_PATH, 'mode': 'rw'}
+    }
+    
     container = client.containers.run(
-        IMAGE_NAME, name=container_name, network=NETWORK_NAME, detach=detach, ports={'5000/tcp': port})
+        IMAGE_NAME,
+        name=container_name,
+        network=NETWORK_NAME,
+        detach=detach,
+        ports={'5000/tcp': port},
+        volumes=volumes  # Montar el volumen compartido
+    )
     
     print(f"Container {container_name} started with ID: {container.id}")
     return container_name  # Devuelve el nombre del contenedor
+
+def clean_volume_host(path):
+    """Limpia el volumen en el host, eliminando todos los archivos y directorios."""
+    if os.path.exists(path):
+        print(f"Limpiando el volumen en el host: {path}...")
+        for filename in os.listdir(path):
+            file_path = os.path.join(path, filename)
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)  # Elimina archivos y enlaces simbólicos
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)  # Elimina directorios y su contenido
+            except Exception as e:
+                print(f"Error al eliminar {file_path}: {e}")
+    else:
+        print(f"El volumen en el host {path} no existe. Creándolo...")
+        os.makedirs(path)
 
 def restart_process():
     """Reinicia el proceso eliminando contenedores e imágenes y reconstruyendo todo"""
@@ -249,6 +282,9 @@ def main():
     create_network_if_not_exists()
     manage_image('build')
     port, start_index = read_env()
+    
+    # Limpia el volumen en el host antes de montarlo
+    clean_volume_host(VOLUME_HOST_PATH)
 
     for i in range(start_index, start_index + args.number):
         container_name = run_container(i, port, True)

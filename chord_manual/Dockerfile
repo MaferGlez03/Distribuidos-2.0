@@ -12,4 +12,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY ./chord.py /app/chord_dht/
 COPY ./storage.py /app/chord_dht/
 COPY ./handle_data.py /app/chord_dht/
+COPY ./flexible_queue.py /app/chord_dht/
 CMD ["python", "-u", "chord_dht/chord.py"]

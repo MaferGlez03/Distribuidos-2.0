@@ -9,11 +9,14 @@ import time
 import subprocess
 from storage import Database
 from handle_data import HandleData
+from flexible_queue import FlexibleQueue
+import os
 #endregion
 
 #region constants
 TCP_PORT = 8000  # puerto de escucha del socket TCP
 UDP_PORT = 8888  # puerto de escucha del socket UDP
+VOLUME_CONTAINER_PATH = '/shared'  # Ruta dentro del contenedor
 # Definición de operaciones Chord
 JOIN = 'join'
 CONFIRM_JOIN = 'conf_join'
@@ -168,9 +171,9 @@ class NodeReference:
 
 class ChordNode:
     def __init__(self):
-        self.node_first = False
         self.ip = self.get_ip()
         self.id = self.generate_id()
+        self.node_first = self._acquire_lock()
         self.tcp_port = TCP_PORT
         self.udp_port = UDP_PORT
         self.predecessor = NodeReference(self.ip, self.tcp_port)
@@ -185,10 +188,9 @@ class ChordNode:
         self.handler_data = HandleData(self.id)
         self.finger_update_queue = queue.Queue()  # Cola de actualizaciones de finger table
        
-        
-        self.db_pred = Database()
         self.db = Database()
-        self.db_succ = Database()
+        self.succ_queue = self.init_queue()
+        self.pred_queue = self.init_queue()
 
         threading.Thread(target=self.start_tcp_server).start()
         threading.Thread(target=self.start_broadcast).start()
@@ -217,6 +219,7 @@ class ChordNode:
         if option == '':
             return
         id = data[1]
+        response = f'ok'
         print("ANALIZANDO MENSAJE EN TCP: ", option)
         
         
@@ -360,21 +363,26 @@ class ChordNode:
             # si se cayo mi sucesor, le digo a su sucesor que soy su  nuevo predecesor
             self.send_data_broadcast(UPDATE_PREDECESSOR, addr[0], UDP_PORT, f'{self.ip}|{self.tcp_port}')
         
-        elif option == SUCC_PROPAGATION or option == PRED_PROPAGATION:
-            if option == SUCC_PROPAGATION: 
-                #! poner en la cola de los sucesores el id
-                pass 
-            
-            else: 
-                #! poner en la cola de los predecesores el id
-                pass 
+        elif option == SUCC_PROPAGATION:
+            propagation = int(data[2]) - 1
+            self.pred_queue.replace_at(id, propagation)
 
-            propagation = data[2] - 1
+            self.succesor.send_data_tcp(option, f'{self.id}|{PROPAGATION}')
+
+            # Enviar al siguiente si todavia el valor de propagacion > 0
+            if propagation > 0:
+                self.succesor.send_data_tcp(option, f'{id}|{propagation}')
+
+        elif option == PRED_PROPAGATION:
+            propagation = int(data[2]) - 1
+            self.succ_queue.replace_at(id, propagation)
+
+            self.predecessor.send_data_tcp(option, f'{self.id}|{PROPAGATION}')
 
             # Enviar al siguiente si todavia el valor de propagacion > 0
             if propagation > 0:
                 self.predecessor.send_data_tcp(option, f'{id}|{propagation}')
-
+        
         else:
             # Operación no reconocida
             response = "Invalid operation"
@@ -385,12 +393,6 @@ class ChordNode:
 
         print("conn, addr, data", conn, addr, data)
         print("option, info, ip, port", option, id)
-
-    def check_predecessor(self):
-        while True:
-            if self.predecessor.id != self.id:
-                pass
-         
 
     def send_data_broadcast(self, op, data):
         """
@@ -457,7 +459,7 @@ class ChordNode:
             if self.id == id:
                 pass
             # Me estoy uniendo a una red donde solo hay un nodo
-            elif self.id == self.succesor.id and self.id == self.predecessor.id:
+            elif self.id == self.succesor.id and self.id == self.predecessor.id and self.node_first:
                 print(f"Me estoy uniendo a una red donde solo hay un nodo({self.id})")
                 # Actualiza mi self.succesor a id
                 op = UPDATE_SUCC
@@ -483,7 +485,7 @@ class ChordNode:
                 if self.id > id:
                     self.set_leader(self.id, self.tcp_port, id, port)
                     self.set_first(id, port, self.id, self.tcp_port)
-                else:
+                elif self.id < id:
                     self.set_first(self.id, self.tcp_port, id, port)
                     self.set_leader(id, port, self.id, self.tcp_port)
 
@@ -516,7 +518,6 @@ class ChordNode:
             # Es menor que yo y soy el first
             elif self.id > id and self.first: 
                 print(f"Es menor que yo({self.id}) y soy el first({self.first})")
-                #? Cambiar segunda condicion por self.first cuando este listo
                 # Actualiza el predecesor del nodo entrante por self.predecesor
                 op = UPDATE_PREDECESSOR
                 data = f'{id}|{port}|{self.predecessor.id}|{self.predecessor.port}'
@@ -545,7 +546,6 @@ class ChordNode:
             # Es mayor que yo y soy el leader
             elif self.id < id and self.leader:
                 print(f"Es mayor que yo({self.id}) y soy el leader({self.leader})")
-                #? Cambiar segunda condicion por self.leader cuando este listo
                 # Actualiza el sucesor del nodo entrante por mi sucesor
                 op = UPDATE_SUCC
                 data = f'{id}|{port}|{self.succesor.id}|{self.succesor.port}'
@@ -634,10 +634,11 @@ class ChordNode:
         op = JOIN
         data = f'{self.id}|{self.tcp_port}'
         self.send_data_broadcast(op, data)
-        time.sleep(2)
+        time.sleep(5)
         self.request_first()
         time.sleep(5)
         self.send_data_broadcast(FIX_FINGER, f'0|0')
+        self.send_data_propagation()
 
     def create_finger_table(self):
         table = {}
@@ -668,9 +669,9 @@ class ChordNode:
         for i in range(8):
             finger_id = (self.id + 2**i) % 256
             #si el nodo nuevo es menor que el que se esta haciendo cargo
-            print(f"  Yo{self.id} Me actualizo con {node.id}")
+            print(f"Yo{self.id} Me actualizo con {node.id}")
             print(f"fingerid: {finger_id}")
-            print(f" actual first: {self.actual_first_id}")
+            print(f"actual first: {self.actual_first_id}")
             if node.id < self.finger_table[finger_id].id:
                 #si me puedo hacer cargo 
                 print(f" nodo encargado del finger {finger_id} es {self.finger_table[finger_id].id} ")
@@ -678,7 +679,7 @@ class ChordNode:
                     self.finger_table[finger_id]= node
                     print(f"[+] Finger {finger_id} actualizado a {node.id}")
                 
-                elif self.actual_first_id== node.id and self.finger_table[finger_id].id < (finger_id) :
+                elif self.actual_first_id == node.id and self.finger_table[finger_id].id < (finger_id) :
                     self.finger_table[finger_id] = node
                     print(f"[+] Finger {finger_id} actualizado a {node.id}")
             # si el nodo es mayor que el que se esta haciendo cargo, pero este se esta haciendo cargo de un dato con id mas grande. 
@@ -687,7 +688,7 @@ class ChordNode:
                 print(f"[+] Finger {finger_id} actualizado a {node.id}")
 
     def print_finger_table(self):
-        print(f" Nodo: {self.id} FINGER TABLE ")
+        print(f" Nodo: {self.id} FINGER TABLE. FIRST: {self.first}. LEADER: {self.leader}")
         for i in range(8):
             finger_id = (self.id + 2**i) % 256
             print(f"id: {finger_id} |||| owner: {self.finger_table[finger_id].id} \n")
@@ -804,6 +805,30 @@ class ChordNode:
     def send_data_propagation(self):
         self.predecessor.send_data_tcp(PRED_PROPAGATION, f'{self.id}|{PROPAGATION}')
         self.succesor.send_data_tcp(SUCC_PROPAGATION, f'{self.id}|{PROPAGATION}')
+
+    def init_queue(self):
+        q = FlexibleQueue()
+        for _ in range(PROPAGATION):
+            q.push_front(self.id)
+        return q
+    
+    def _acquire_lock(self):
+        """Intenta adquirir el lock y devuelve True si este nodo es el primero."""
+        lock_file = os.path.join(VOLUME_CONTAINER_PATH, "lockfile")
+
+        try:
+            # Intenta crear el archivo de lock (modo exclusivo)
+            fd = os.open(lock_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            with os.fdopen(fd, 'w') as f:
+                f.write(f"lock{self.id}")  # Escribe algo en el archivo
+
+            # Si llegamos aquí, este nodo es el primero
+            print(f"NODO {self.id} adquirió el lock!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!.")
+            return True
+        except FileExistsError:
+            # Si el archivo ya existe, otro nodo ya adquirió el lock
+            print(f"NODO {self.id} no es el primero!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            return False
 
 #region DB
 

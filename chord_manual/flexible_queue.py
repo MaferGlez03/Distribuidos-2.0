@@ -86,6 +86,27 @@ class FlexibleQueue:
                 current.next.prev = current.prev
             self.size -= 1
             return value
+        
+    def replace_front(self, value):
+        if not self.head:
+            return None
+        self.head.value = value
+
+    def replace_back(self, value):
+        if not self.tail:
+            return None
+        self.tail.value = value
+
+    def replace_at(self, value, index):
+        if index < 0:
+            self.replace_back(value)
+        elif index >= self.size:
+            self.replace_front(value)
+        else:
+            current = self.head
+            for _ in range(index):
+                current = current.next
+            current.value = value
 
     def display(self):
         current = self.head
@@ -96,10 +117,20 @@ class FlexibleQueue:
         print("Queue:", values)
 
 # Ejemplo de uso
-queue = FlexibleQueue()
-queue.push_back(10)
-queue.push_front(5)
-queue.push_at(7, 1)
-queue.display()
-queue.pop_at(1)
-queue.display()
+# queue = FlexibleQueue()
+# queue.push_back(10)
+# queue.push_front(5)
+# queue.push_at(7, 1)
+# queue.display()
+# queue.pop_at(1)
+# queue.display()
+# queue.push_at(9, 55)
+# queue.display()
+
+# queue.replace_front(4)
+# queue.display()
+# queue.replace_back(6)
+# queue.display()
+# queue.replace_at(2, 1)
+# queue.display()
+
