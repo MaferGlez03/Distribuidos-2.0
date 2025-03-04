@@ -16,7 +16,7 @@ import os
 #region constants
 TCP_PORT = 8000  # puerto de escucha del socket TCP
 UDP_PORT = 8888  # puerto de escucha del socket UDP
-VOLUME_CONTAINER_PATH = '/shared'  # Ruta dentro del contenedor
+VOLUME_CONTAINER_PATH = '\\shared'  # Ruta dentro del contenedor
 # Definición de operaciones Chord
 JOIN = 'join'
 CONFIRM_JOIN = 'conf_join'
@@ -488,12 +488,13 @@ class ChordNode:
         if option == '':
             return
         if data[1] != None:
-            id = int(data[1])
+            ip = int(data[1])
             port = int(data[2])
         print("ANALIZANDO MENSAJE: ", option)
         address = direccion[0]
 
         if option == JOIN:
+            id = self.generate_id_(ip)
             # No hacer nada si recibo la operacion de mi mismo
             if self.id == id:
                 pass
@@ -502,22 +503,22 @@ class ChordNode:
                 print(f"Me estoy uniendo a una red donde solo hay un nodo({self.id})")
                 # Actualiza mi self.successor a id
                 op = UPDATE_SUCC
-                data = f'{self.id}|{self.tcp_port}|{id}|{port}'
+                data = f'{self.id}|{self.tcp_port}|{ip}|{port}'
                 self.send_data_broadcast(op, data)
                 
                 # Actualiza mi self.predecessor a id
                 op = UPDATE_PREDECESSOR
-                data = f'{self.id}|{self.tcp_port}|{id}|{port}'
+                data = f'{self.id}|{self.tcp_port}|{ip}|{port}'
                 self.send_data_broadcast(op, data)
 
                 # Actualiza id.sucesor a self.id
                 op = UPDATE_SUCC
-                data = f'{id}|{port}|{self.id}|{self.tcp_port}'
+                data = f'{id}|{port}|{self.ip}|{self.tcp_port}'
                 self.send_data_broadcast(op, data)
 
                 # Actualiza id.predecesor a self.id
                 op = UPDATE_PREDECESSOR
-                data = f'{id}|{port}|{self.id}|{self.tcp_port}'
+                data = f'{id}|{port}|{self.ip}|{self.tcp_port}'
                 self.send_data_broadcast(op, data)
 
                 # Actualizo first y leader
@@ -535,22 +536,22 @@ class ChordNode:
                 print(f"Esta entre yo({self.id}) y mi predecesor({self.predecessor.id})")
                 # Actualiza mi sucesor por el nodo entrante
                 op = UPDATE_SUCC
-                data = f'{self.predecessor.id}|{self.predecessor.port}|{id}|{port}'
+                data = f'{self.predecessor.id}|{self.predecessor.port}|{ip}|{port}'
                 self.send_data_broadcast(op, data)
                 
                 # Actualiza mi predecesor por el nodo entrante
                 op = UPDATE_PREDECESSOR
-                data = f'{self.id}|{self.tcp_port}|{id}|{port}'
+                data = f'{self.id}|{self.tcp_port}|{ip}|{port}'
                 self.send_data_broadcast(op, data)
 
                 # Actualiza id.sucesor a self.id
                 op = UPDATE_SUCC
-                data = f'{id}|{port}|{self.id}|{self.tcp_port}'
+                data = f'{id}|{port}|{self.ip}|{self.tcp_port}'
                 self.send_data_broadcast(op, data)
 
                 # Actualiza id.predecesor a self.id
                 op = UPDATE_PREDECESSOR
-                data = f'{id}|{port}|{self.predecessor.id}|{self.predecessor.port}'
+                data = f'{id}|{port}|{self.predecessor.ip}|{self.predecessor.port}'
                 self.send_data_broadcast(op, data)
                 print("self.ip, self.predecessor.ip, self.successor.ip: ", self.ip, self.predecessor.ip, self.successor.ip)
             
@@ -559,22 +560,22 @@ class ChordNode:
                 print(f"Es menor que yo({self.id}) y soy el first({self.first})")
                 # Actualiza el predecesor del nodo entrante por self.predecesor
                 op = UPDATE_PREDECESSOR
-                data = f'{id}|{port}|{self.predecessor.id}|{self.predecessor.port}'
+                data = f'{id}|{port}|{self.predecessor.ip}|{self.predecessor.port}'
                 self.send_data_broadcast(op, data)
                 
                 # Actualiza el sucesor del nodo entrante por self.id
                 op = UPDATE_SUCC
-                data = f'{id}|{port}|{self.id}|{self.tcp_port}'
+                data = f'{id}|{port}|{self.ip}|{self.tcp_port}'
                 self.send_data_broadcast(op, data)
 
                 # Actualiza mi predecesor por el nodo entrante
                 op = UPDATE_PREDECESSOR
-                data = f'{self.id}|{self.tcp_port}|{id}|{port}'
+                data = f'{self.id}|{self.tcp_port}|{ip}|{port}'
                 self.send_data_broadcast(op, data)
 
                 # Actualiza el sucesor de mi predecesor por el nodo entrante
                 op = UPDATE_SUCC
-                data = f'{self.predecessor.id}|{self.predecessor.port}|{id}|{port}'
+                data = f'{self.predecessor.id}|{self.predecessor.port}|{ip}|{port}'
                 self.send_data_broadcast(op, data)
 
                 # Actualizo first
@@ -587,22 +588,22 @@ class ChordNode:
                 print(f"Es mayor que yo({self.id}) y soy el leader({self.leader})")
                 # Actualiza el sucesor del nodo entrante por mi sucesor
                 op = UPDATE_SUCC
-                data = f'{id}|{port}|{self.successor.id}|{self.successor.port}'
+                data = f'{id}|{port}|{self.successor.ip}|{self.successor.port}'
                 self.send_data_broadcast(op, data)
                 
                 # Actualiza el predecesor del nodo entrante por mi
                 op = UPDATE_PREDECESSOR
-                data = f'{id}|{port}|{self.id}|{self.tcp_port}'
+                data = f'{id}|{port}|{self.ip}|{self.tcp_port}'
                 self.send_data_broadcast(op, data)
 
                 # Actualiza mi sucesor por el nodo entrante
                 op = UPDATE_SUCC
-                data = f'{self.id}|{self.tcp_port}|{id}|{port}'
+                data = f'{self.id}|{self.tcp_port}|{ip}|{port}'
                 self.send_data_broadcast(op, data)
 
                 # Actualiza el predecesor de mi sucesor por el nodo entrante
                 op = UPDATE_PREDECESSOR
-                data = f'{self.successor.id}|{self.successor.port}|{id}|{port}'
+                data = f'{self.successor.id}|{self.successor.port}|{ip}|{port}'
                 self.send_data_broadcast(op, data)
 
                 # Actualizo leader
@@ -611,20 +612,24 @@ class ChordNode:
                 print("self.ip, self.predecessor.ip, self.successor.ip: ", self.ip, self.predecessor.ip, self.successor.ip)
         
         elif option == UPDATE_SUCC:
-            new_id = int(data[3])
+            id = int(data[1])
+            new_ip = int(data[3])
+            new_id = self.generate_id_(new_ip)
             new_port = int(data[4])
             print("CHECK successor: ", self.id, id, self.id == id, new_id, new_port)
             if self.id == id:
                 print("UPDATE_SUCC")
-                self.successor = NodeReference(new_id, new_port, True)
+                self.successor = NodeReference(new_ip, new_port)
 
         elif option == UPDATE_PREDECESSOR:
-            new_id = int(data[3])
+            id = int(data[1])
+            new_ip = int(data[3])
+            new_id = self.generate_id_(new_ip)
             new_port = int(data[4])
             print("CHECK PREDECESSOR: ", self.id, id, self.id == id, new_id, new_port)
             if self.id == id:
                 print("UPDATE_PREDECESSOR")
-                self.predecessor = NodeReference(new_id, new_port, True)
+                self.predecessor = NodeReference(new_ip, new_port)
                 
         elif option == FIX_FINGER:
             
@@ -645,6 +650,7 @@ class ChordNode:
             print("Solicitud propia")
             
         elif option == UPDATE_FIRST:
+            id = int(data[1])
             old_id = int(data[3])
             print(f"CONFIRMADO: {id} es el nuevo first y {old_id} ya no es first")
             self.actual_first_id = id
@@ -654,6 +660,7 @@ class ChordNode:
                 self.first = False
 
         elif option == UPDATE_LEADER:
+            id = int(data[1])
             old_id = int(data[3])
             print(f"CONFIRMADO: {id} es el nuevo lider y {old_id} ya no es lider")
 
@@ -667,15 +674,17 @@ class ChordNode:
                 self.get_first(self.id, self.tcp_port)
             
         elif option == UPDATE_FIRST_TOTAL:
+            id = int(data[1])
             self.actual_first_id = id
             
         elif option == UPDATE_FINGER:
+            id = int(data[1])
             port_= data[3]
             self.finger_update_fall_queue.put((id,port,port_)) #aqui port en realidad es un ip
 
     def join(self):
         op = JOIN
-        data = f'{self.id}|{self.tcp_port}'
+        data = f'{self.ip}|{self.tcp_port}'
         self.send_data_broadcast(op, data)
         time.sleep(5)
         self.request_first()
