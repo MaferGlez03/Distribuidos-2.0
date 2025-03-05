@@ -17,8 +17,15 @@ CONTAINER_PREFIX = 'agenda-server-'
 ENV_FILE = '.env'
 
 # Ruta del volumen compartido (en el host y en el contenedor)
+<<<<<<< HEAD
 VOLUME_HOST_PATH = "D:\Distribuidos-2.0\chord_manual\first"
 VOLUME_CONTAINER_PATH = '/shared'  # Ruta dentro del contenedor
+=======
+# VOLUME_HOST_PATH = 'D:\\Distribuidos-2.0\\chord_manual\\first'
+# VOLUME_CONTAINER_PATH = '\\shared'
+VOLUME_HOST_PATH = '/media/daniman/Dani/UNI/4toano/Distribuidos/Proyecto/FinalTotal/Distribuidos-2.0/chord_manual/first'
+VOLUME_CONTAINER_PATH = '/shared'  
+>>>>>>> c40ca0b (ambas rutas)
 
 def read_env(file_path=ENV_FILE):
     """Lee el archivo .env y devuelve los valores de PORT y CONTAINER_INDEX"""
