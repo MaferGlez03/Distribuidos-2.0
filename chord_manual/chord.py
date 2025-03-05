@@ -97,7 +97,7 @@ class NodeReference:
         return self.send_data_tcp(REQUEST_DATA, f'{id}')
     
     def notify(self, id: str):
-        return self.send_data_tcp(NOTIFY, id)
+        return self.send_data_tcp(NOTIFY, f"{id}")
     
     def update_finger(self, id: int, ip: str, port: int):
         return self.send_data_tcp(UPDATE_FINGER, f'{id}|{ip}|{port}')
@@ -409,14 +409,24 @@ class ChordNode:
         print("option, info, ip, port", option, id)
 
     def check_predecessor(self):
+        print(f"el id de mi predecesor es {self.predecessor.id} y el mio {self.id}")
         while True:
             if self.predecessor.id != self.id:
+                print("Somos diferentes")
                 
-                data = self.predecessor.send_data_tcp(CHECK_PREDECESSOR, f'0|0')
-                if data:
-                    self.repli_pred= data.decode()
-                    ip_pred_pred = self.repli_pred.split('|')[-1]
-                else:
+                try:
+                    print("Voy a tratar de conectar")
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                        s.connect((self.predecessor.ip, self.predecessor.port)) #nos conectamos x via TCP al predecesor
+                        s.settimeout(5) #configuramos el socket para lanzar un error si no recibe respuesta en 5 segundos
+                        print("conecto")
+                        op = CHECK_PREDECESSOR
+                        data = f"0|0"
+                        s.sendall(f'{op}|{data}'.encode('utf-8')) #chequeamos que no se ha caido el predecesor
+                        self.pred_repli = s.recv(1024).decode() #guardamos la info recibida
+                        ip_pred_pred = self.pred_repli.split('|')[-1] #guardamos el id del predecesor de nuestro predecesor
+
+                except:
                     print(f"El servidor {self.predecessor.ip} se ha desconectado")
                     #!Replicar en la bd la info del predecesor
                     
@@ -428,16 +438,27 @@ class ChordNode:
                             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                               s.connect((ip_pred_pred, TCP_PORT))
                               s.settimeout(5)
-                              s.sendall(f'{FALL_SUCC}|{self.ip}|{self.tcp_port}')
+                              s.sendall(f'{FALL_SUCC}|{self.ip}|{self.tcp_port}'.encode('utf-8'))
                               s.recv(1024).decode()
+                              print(self.predecessor.id)
+                              print(self.successor.id)
 
                         except:
-                            print(f"El servidor {ip_pred_pred} se ha desconectado")
+                            print(f"El servidor {ip_pred_pred} se ha desconectado tambien")
                             #!replicar data
                             if ip_pred_pred != self.successor.ip:
                                 self.send_data_broadcast(NOTIFY,f"{self.generate_id_(ip_pred_pred)}")
-                            pass
-
+                            else:
+                                print(f"Solo eramos tres nodos me reinicio")
+                                self.predecessor = NodeReference(self.ip, self.tcp_port)
+                                self.successor = NodeReference(self.ip, self.tcp_port)
+                                self.finger_table =self.create_finger_table()
+                    else:
+                        print(f"Solo eramos dos nodos me reinicio")
+                        self.predecessor = NodeReference(self.ip, self.tcp_port)
+                        self.successor = NodeReference(self.ip, self.tcp_port)
+                        self.finger_table =self.create_finger_table()        
+                time.sleep(5)
     def send_data_broadcast(self, op, data):
         """
         Envía un mensaje por broadcast utilizando UDP.
@@ -689,24 +710,28 @@ class ChordNode:
             self.finger_update_fall_queue.put((id,ip,port_)) #aqui port en realidad es un ip
         elif option == NOTIFY:
             id = int(data[1])
-            if address[0] != self.ip:
+            if address != self.ip:
                 #si se cayo mi sucesor, me actualizo con quien lo notifico, le pido data si tiene y le comunico que se actualice conmigo
                 if self.successor.id == id:
-                  self.successor = NodeReference(address[0], self.tcp_port)
+                  self.successor = NodeReference(address, self.tcp_port)
                   #!self._request_data(succ=True)
                   self.successor.send_data_tcp(UPDATE_PREDECESSOR, f'{self.ip}|{self.tcp_port}')
                   #si el nodo que me notifico tiene menor id que yo, que actualicen al nodo caido conmigo, pues soy el nuevo lider
                   #en caso contrario, que actualicen con el nodo notificante
-                  self.send_data_broadcast(UPDATE_FINGER,f"{id}, {address[0]}, {TCP_PORT}")
+                  self.send_data_broadcast(UPDATE_FINGER,f"{id}|{address}|{TCP_PORT}")
 
     def join(self):
         op = JOIN
         data = f'{self.ip}|{self.tcp_port}'
+        print(f"predecesor: {self.predecessor.id} yo : {self.id} sucesor: {self.successor.id}")
         self.send_data_broadcast(op, data)
         time.sleep(5)
+        print(f"predecesor: {self.predecessor.id} yo : {self.id} sucesor: {self.successor.id}")
         self.request_first()
         time.sleep(5)
+        print(f"predecesor: {self.predecessor.id} yo : {self.id} sucesor: {self.successor.id}")
         self.send_data_broadcast(FIX_FINGER, f'0|0')
+        print(f"predecesor: {self.predecessor.id} yo : {self.id} sucesor: {self.successor.id}")
         #self.send_data_propagation()
 
     def create_finger_table(self):
@@ -777,7 +802,8 @@ class ChordNode:
                     self.finger_table[finger_id]= node
                     print(f"[+] Finger {finger_id} actualizado a {node.id}")
             else:
-                if self.finger_table[finger_id]==id:
+                print("UPDATE DE CAIDA")
+                if self.finger_table[finger_id].id==id:
                     self.finger_table[finger_id]= node
                 
     
