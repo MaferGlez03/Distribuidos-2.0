@@ -62,6 +62,7 @@ LIST_EVENTS_PENDING = 'list_events_pending'
 LIST_CONTACTS = 'list_contacts'
 REMOVE_CONTACT = 'remove_contact'
 LIST_MEMBER = 'list_member'
+BROADCAST_ID = 'broad_id'
 BROADCAST_IP = '255.255.255.255'
 #endregion
 
@@ -85,7 +86,7 @@ class NodeReference:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:  # 🔹 Cambiar a TCP (SOCK_STREAM)
                 s.connect((self.ip, self.port))  # 🔹 Conectar al servidor TCP
                 s.sendall(f'{op}|{data}'.encode('utf-8'))  # 🔹 Enviar mensaje correctamente
-                print(f"Mensaje enviado correctamente vía TCP. Operation: {op} Data: {data}")
+                # print(f"Mensaje enviado correctamente vía TCP. Operation: {op} Data: {data}")
                 return s.recv(1024)
         except Exception as e:
             print(f"Mensaje fallido. Operation: {op} Data: {data} Error: {e}")
@@ -193,14 +194,16 @@ class ChordNode:
         self.finger_update_fall_queue = queue.Queue() # Cola de actualizaciones de finger table cuando se cae un nodo
        
         self.db = Database()
-        self.succ_queue = self.init_queue()
-        self.pred_queue = self.init_queue()
+        self.repli_db = {}
+        self.fall_db = {}
+        self.nodes = [(self.id, self.ip)]
 
         threading.Thread(target=self.start_tcp_server).start()
         threading.Thread(target=self.start_broadcast).start()
         threading.Thread(target=self.handle_finger_table).start()
         threading.Thread(target=self.handle_finger_table_update).start()
         threading.Thread(target=self.check_predecessor).start()
+        threading.Thread(target=self.send_id_broadcast).start()
 
         self.join()
         
@@ -234,10 +237,7 @@ class ChordNode:
             return
         
         if option == REPLICATE:
-            if id == self.predecessor.id:
-                self.db_pred = data[2]
-            elif id == self.succesor.id:
-                self.db_succ = data[2]
+            self.repli_db[id] = data[2]
 
         elif option == REGISTER:
             id = int(data[1])
@@ -364,6 +364,7 @@ class ChordNode:
             self.repli_pred_pred = data_ #!AQUI TAL VEZ HAY Q CAMBIAR LA LOGICA POR LA FORMA DE REPLICAR
 
         elif option == FALL_SUCC:
+            print("FALL SUCC FALL SUCC FALL SUCC FALL SUCC FALL SUCC")
             ip = data[1]
             port = int(data[2])
             self.successor = NodeReference(ip, port)
@@ -372,6 +373,7 @@ class ChordNode:
             self.request_succ_data(succ=True) #!ESTO es lo del balanceo de carga
             # si se cayo mi sucesor, le digo a su sucesor que soy su  nuevo predecesor
             self.successor.send_data_tcp(UPDATE_PREDECESSOR, f'{self.ip}|{self.tcp_port}')
+        
         elif option == UPDATE_PREDECESSOR:
             ip = data[1]
             port = int(data[2])
@@ -457,7 +459,7 @@ class ChordNode:
                 
                 # Enviar el mensaje por broadcast
                 s.sendto(mensaje, (BROADCAST_IP, self.udp_port))
-                print(f"Mensaje enviado por broadcast. Operation: {op} Data: {data}")
+                # print(f"Mensaje enviado por broadcast. Operation: {op} Data: {data}")
         except Exception as e:
             print(f"Error al enviar mensaje por broadcast. Operation: {op} Data: {data} Error: {e}")
 
@@ -688,7 +690,9 @@ class ChordNode:
             ip= data[2]
             port_= data[3]
             self.finger_update_fall_queue.put((id,ip,port_)) #aqui port en realidad es un ip
+        
         elif option == NOTIFY:
+            print("NOTIFYNOTIFYNOTIFYNOTIFYNOTIFYNOTIFYNOTIFY")
             id = int(data[1])
             if address[0] != self.ip:
                 #si se cayo mi sucesor, me actualizo con quien lo notifico, le pido data si tiene y le comunico que se actualice conmigo
@@ -699,6 +703,12 @@ class ChordNode:
                   #si el nodo que me notifico tiene menor id que yo, que actualicen al nodo caido conmigo, pues soy el nuevo lider
                   #en caso contrario, que actualicen con el nodo notificante
                   self.send_data_broadcast(UPDATE_FINGER,f"{id}, {address[0]}, {TCP_PORT}")
+
+        elif option == BROADCAST_ID:
+            real_ip = data[2]
+            self.append((int(ip), real_ip))
+            self.nodes.sort(key=lambda x: x[0])
+            self.print_successors()
 
     def join(self):
         op = JOIN
@@ -962,5 +972,147 @@ class ChordNode:
 
         return successor_list[:k]  # Retornar solo k nodos
 
+#region invent
+    def update_successor_list(self, k=3):
+        """
+        Mantiene actualizada la lista de k sucesores y maneja fallos.
+        """
+        while True:
+            time.sleep(5)  # Esperar antes de la próxima actualización
+            
+            # Verificar si el primer sucesor sigue activo
+            if not self.verificar_ip_activa(self.successor.ip, self.successor.port):
+                print(f"⚠️ Sucesor {self.successor.id} ha fallado. Buscando reemplazo...")
+
+                # Recuperar datos del nodo caído
+                self.recover_data_from_failed_node(self.successor)
+
+                # Reemplazar sucesor y actualizar la lista
+                successor_list = self.get_successor_list(k)
+                if successor_list:
+                    self.successor = successor_list[0]
+                    self.successor_list = successor_list
+                    print(f"✅ Nuevo sucesor asignado: {self.successor.id}")
+                else:
+                    print("❌ No hay sucesores disponibles, el anillo puede estar fragmentado.")
+
+    def recover_data_from_failed_node(self, failed_node):
+        """
+        Recupera y repropaga los datos de un nodo caído.
+        """
+        successor = self.successor  # Nuevo nodo responsable
+        if successor:
+            keys_to_recover = failed_node.get_all_keys()
+            for key, value in keys_to_recover.items():
+                successor.store_with_replication(key, value, k)
+            print(f"🔄 Datos del nodo {failed_node.id} han sido recuperados y replicados.")
+#endregion
+    
+    def send_id_broadcast(self):
+        while True:
+            op = BROADCAST_ID
+            data = f"{self.id}|{self.ip}"
+            self.send_data_broadcast(op, data)
+            time.sleep(1)
+
+    def append(self, element):
+        add = True
+        for e, _ in self.nodes:
+            if e == element[0]:
+                add = False
+                break
+        if add:
+            self.nodes.append(element)
+
+    def print_successors(self):
+        elemento = self.id
+        lista = [tupla[0] for tupla in self.nodes]
+        k = PROPAGATION
+
+        # Verificar si el elemento está en la lista
+        if elemento not in lista:
+            print(f"ERROR: {self.id} NO ESTA")
+            return None  # O lanzar una excepción, según lo que prefieras
+
+        # Encontrar el índice del elemento en la lista
+        indice = lista.index(elemento)
+
+        # Crear una lista circular para obtener los k elementos consecutivos
+        resultado = []
+        for i in range(1, k + 1):
+            # Calcular el índice circular usando el módulo
+            indice_circular = (indice + i) % len(lista)
+            resultado.append(lista[indice_circular])
+
+        print(f"SUCCESORES: {resultado}")
+        print(f"PRED: {self.predecessor.id} | YO: {self.id} | SUCC: {self.successor.id}")
+
+    def replicate(self):
+        element = (self.id, self.ip)
+        k = PROPAGATION
+        list = self.nodes
+        indice = list.index(element)
+
+        resultado = []
+        for i in range(1, k + 1):
+            indice_circular = (indice + i) % len(list)
+            resultado.append(list[indice_circular])
+
+        for id, ip in resultado:
+            succ = NodeReference(ip, self.tcp_port)
+            succ.send_data_tcp(REPLICATE, f"{self.id}|{self.db}")
+
 if __name__ == "__main__":
     server = ChordNode()
+
+# 
+# 
+# 113 -> 115 -> 130 -> 226 -> 227
+# 
+# 227 | 115 | 226 | 130 | 113
+#
+# Entra 227
+# [227, 227, 227]
+#
+# Entra 115
+# 115
+# [227, 115, 115]
+# 227
+# [115, 227, 115]
+# 115 again
+# [227, 115, 227]
+#
+# Entra 226
+# 226
+# [227, 226, 226]
+# 115
+# [226, 227, 226]
+# 227
+# [115, 226, 227]
+# 226 again
+# [227, 115, 226]
+#
+# Entra 130
+# 130
+# [226, 130, 130]
+# 115
+# [130, 226, 130]
+# 227
+# [115, 130, 226]
+# 226
+# [227, 115, 130]
+# 130 again
+# [226, 227, 115]
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#                             
+# 
