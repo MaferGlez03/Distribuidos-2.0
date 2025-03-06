@@ -381,7 +381,11 @@ class ChordNode:
                     #!Replicar en la bd la info del predecesor
                     if self.first:
                         self.send_data_broadcast(
-                            UPDATE_LEADER, f"{ip_pred_pred}|{TCP_PORT}|{self.predecessor.id}")
+                            UPDATE_LEADER, f"{self.generate_id_(ip_pred_pred)}|{TCP_PORT}|{self.predecessor.id}")
+                        time.sleep(2)
+                    elif self.actual_first_id == self.predecessor.id:
+                        self.send_data_broadcast(
+                            UPDATE_FIRST,f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
                         time.sleep(2)
                     self.send_data_broadcast(
                         UPDATE_FINGER, f"{self.predecessor.id}|{self.ip}|{TCP_PORT}")
@@ -403,6 +407,9 @@ class ChordNode:
                                 f"El servidor {ip_pred_pred} se ha desconectado tambien")
                             #!replicar data
                             if ip_pred_pred != self.successor.ip:
+                                if self.generate_id_(ip_pred_pred) == self.actual_first_id:
+                                    self.send_data_broadcast(UPDATE_FIRST,f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
+                                time.sleep(2)
                                 self.send_data_broadcast(
                                     NOTIFY, f"{self.generate_id_(ip_pred_pred)}")
                             else:
@@ -697,10 +704,10 @@ class ChordNode:
             if address != self.ip:
                 # si se cayo mi sucesor, me actualizo con quien lo notifico, le pido data si tiene y le comunico que se actualice conmigo
                 if self.successor.id == id:
-                    self.successor = NodeReference(address, self.tcp_port)
-                    if self.generate_id_(address) == self.actual_first_id:
+                    if self.actual_leader_id == id:
                         self.leader = True
                     #!self._request_data(succ=True)
+                    self.successor = NodeReference(address, self.tcp_port)
                     self.successor.send_data_tcp(
                         UPDATE_PREDECESSOR, f'{self.ip}|{self.tcp_port}')
                     # si el nodo que me notifico tiene menor id que yo, que actualicen al nodo caido conmigo, pues soy el nuevo lider
@@ -997,54 +1004,3 @@ class ChordNode:
 if __name__ == "__main__":
     server = ChordNode()
 
-#
-#
-# 113 -> 115 -> 130 -> 226 -> 227
-#
-# 227 | 115 | 226 | 130 | 113
-#
-# Entra 227
-# [227, 227, 227]
-#
-# Entra 115
-# 115
-# [227, 115, 115]
-# 227
-# [115, 227, 115]
-# 115 again
-# [227, 115, 227]
-#
-# Entra 226
-# 226
-# [227, 226, 226]
-# 115
-# [226, 227, 226]
-# 227
-# [115, 226, 227]
-# 226 again
-# [227, 115, 226]
-#
-# Entra 130
-# 130
-# [226, 130, 130]
-# 115
-# [130, 226, 130]
-# 227
-# [115, 130, 226]
-# 226
-# [227, 115, 130]
-# 130 again
-# [226, 227, 115]
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
