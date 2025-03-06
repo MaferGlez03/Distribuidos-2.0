@@ -22,6 +22,7 @@ CONFIRM_JOIN = 'conf_join'
 FIX_FINGER = 'fix_fing'
 FIND_FIRST = 'fnd_first'
 FIND_FIRST_TOTAL = 'fnd_first_total'
+FIND_LEADER_TOTAL = 'fnd_leader_total'
 REQUEST_DATA = 'req_data'
 CHECK_PREDECESSOR = 'check_pred'
 NOTIFY = 'notf'
@@ -31,6 +32,7 @@ UPDATE_SUCC = 'upd_suc'
 UPDATE_LEADER = 'upd_leader'
 UPDATE_FIRST = 'upd_first'
 UPDATE_FIRST_TOTAL = 'upd_first_total'
+UPDATE_LEADER_TOTAL = 'upd_leader_total'
 DATA_PRED = 'dat_prd'
 FALL_SUCC = 'fal_suc'
 
@@ -691,6 +693,14 @@ class ChordNode:
             id = int(data[1])
             self.actual_first_id = id
 
+        elif option == FIND_LEADER_TOTAL:
+            if self.leader:
+                self.get_leader(self.id, self.tcp_port)
+
+        elif option == UPDATE_LEADER_TOTAL:
+            id = int(data[1])
+            self.actual_leader_id = id
+
         elif option == UPDATE_FINGER:
             id = int(data[1])
             ip = data[2]
@@ -730,6 +740,7 @@ class ChordNode:
         print(
             f"predecesor: {self.predecessor.id} yo : {self.id} sucesor: {self.successor.id}")
         self.request_first()
+        self.request_leader()
         time.sleep(5)
         print(
             f"predecesor: {self.predecessor.id} yo : {self.id} sucesor: {self.successor.id}")
@@ -814,7 +825,7 @@ class ChordNode:
     def print_finger_table(self):
         print(f" Nodo: {self.id} FINGER TABLE. FIRST: {self.first}. LEADER: {self.leader}")
         print(f"PREDECESOR: {self.predecessor.id} YO: {self.id} SUCCESOR: {self.successor.id}")
-        print(f"ACTUAL FIRST: {self.actual_first_id}")
+        print(f"ACTUAL FIRST: {self.actual_first_id} | ACTUAL LEADER: {self.actual_leader_id}")
         for i in range(8):
             finger_id = (self.id + 2**i) % 256
             print(
@@ -868,6 +879,18 @@ class ChordNode:
     def get_first(self, id, port):
         print(f"FIRST ACTUAL: {id}")
         op = UPDATE_FIRST_TOTAL
+        data = f'{id}|{port}'
+        self.send_data_broadcast(op, data)
+
+    def request_leader(self):
+        print("BUSCANDO LIDER")
+        op = FIND_LEADER_TOTAL
+        data = f'{0}|{0}'
+        self.send_data_broadcast(op, data)
+
+    def get_leader(self, id, port):
+        print(f"LIDER ACTUAL: {id}")
+        op = UPDATE_LEADER_TOTAL
         data = f'{id}|{port}'
         self.send_data_broadcast(op, data)
 
