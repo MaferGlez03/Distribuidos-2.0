@@ -261,7 +261,7 @@ def main():
     for i in range(start_index, start_index + args.number):
         container_name = run_container(i, port, True)
         port, start_index = update_env()
-        time.sleep(10)
+        time.sleep(15)
 
         if args.interactive_logs:
             open_logs_in_terminal(container_name)

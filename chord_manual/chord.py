@@ -17,6 +17,7 @@ import os
 TCP_PORT = 8000  # puerto de escucha del socket TCP
 UDP_PORT = 8888  # puerto de escucha del socket UDP
 # Definición de operaciones Chord
+GET_FIRST = 'get_first'
 JOIN = 'join'
 CONFIRM_JOIN = 'conf_join'
 FIX_FINGER = 'fix_fing'
@@ -133,7 +134,24 @@ class ChordNode:
         # threading.Thread(target=self.send_id_broadcast).start()
 
         self.join()
+    def register(self, id: int, name: str, email: str, password: str) -> str:
+        if id < self.id:
+            if id >self.predecessor.id or self.first:
+                self._register(id,name,email,password)
+            else:
+            # Reenviar al "first"
+                first_node = self.find_first()
+                return first_node.register(id, name, email, password)
+        else:
+            # Registrar localmente
+            return self._closest_preceding_node(id)
 
+    def _register(self, id: int, name: str, email: str, password: str) -> str:
+    
+        success = self.db.register_user(name, email, password)[0]
+        return ("User registered", success[1]) if success else ("Failed to register user", success[1])
+   
+#region CHORD
     def start_tcp_server(self):
         """Iniciar el servidor TCP."""
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -163,7 +181,7 @@ class ChordNode:
             self.finger_update_queue.put((id, TCP_PORT))
             return
 
-        if option == REPLICATE:
+        elif option == REPLICATE:
             self.repli_db[id] = data[2]
 
         elif option == REGISTER:
@@ -280,6 +298,9 @@ class ChordNode:
         elif option == REQUEST_DATA:
             id = int(data[1])
             response = self.handler_data.data(True, id)
+            
+        elif option == GET_FIRST:
+            response = data[1]
 
         elif option == CHECK_PREDECESSOR:
             # !AQUI EL OBJETIVO ES OBTENE LA DATA DE MI PREDECESOR
@@ -331,7 +352,7 @@ class ChordNode:
             # Enviar al siguiente si todavia el valor de propagacion > 0
             if propagation > 0:
                 self.predecessor.send_data_tcp(option, f'{id}|{propagation}')
-
+        
         else:
             # Operación no reconocida
             response = "Invalid operation"
@@ -625,6 +646,10 @@ class ChordNode:
                 print("self.ip, self.predecessor.ip, self.successor.ip: ",
                       self.ip, self.predecessor.ip, self.successor.ip)
 
+        elif option == FIND_FIRST:
+            if self.first == True:
+                address.send_data_tcp(GET_FIRST, f'{self.ip}')
+                 
         elif option == UPDATE_SUCC:
             id = int(data[1])
             new_ip = data[3]
@@ -841,14 +866,15 @@ class ChordNode:
         """Devuelve el nodo más cercano a un ID en la finger table."""
         for i in range(8):
             if (self.id + (2**i) % 256) > id:
-                return self.finger_table[i-1]
-
+                if self.finger_table[self.id + (2**(i-1)) % 256]>= id:
+                    return self.finger_table[self.id + (2**(i-1)) % 256]
+                else: 
+                    return self.finger_table[self.id + (2**(i)) % 256]
+        return self.finger_table[self.id + (2**(i)) % 256]
     def find_first(self) -> bytes:
         """Buscar el primer nodo."""
-        if self.leader:
-            return f'{self.successor.ip}|{self.successor.port}'.encode()
-
-        response = self.finger_table[-1].find_first()
+        data = self.send_data_broadcast(FIND_FIRST, f'0|0').decode()
+        response = NodeReference(data, self.tcp_port)
         return response
 
     def request_succ_data(self, succ=False, pred=False):
@@ -1026,7 +1052,7 @@ class ChordNode:
         for id, ip in resultado:
             succ = NodeReference(ip, self.tcp_port)
             succ.send_data_tcp(REPLICATE, f"{self.id}|{self.db}")
-
+#endregion
 
 if __name__ == "__main__":
     server = ChordNode()
