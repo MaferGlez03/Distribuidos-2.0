@@ -157,7 +157,7 @@ class ChordNode:
             return
         id = data[1]
         response = f'ok'
-        print("ANALIZANDO MENSAJE EN TCP: ", option)
+        # print("ANALIZANDO MENSAJE EN TCP: ", option)
 
         if option == FIX_FINGER:
             self.finger_update_queue.put((id, TCP_PORT))
@@ -302,7 +302,7 @@ class ChordNode:
             response = f'ok'
             # pido data a mi sucesor al actualizar mi posicion
             # !ESTO es lo del balanceo de carga
-            self.request_succ_data(succ=True)
+            # self.request_succ_data(succ=True)
             # si se cayo mi sucesor, le digo a su sucesor que soy su  nuevo predecesor
             self.successor.send_data_tcp(
                 UPDATE_PREDECESSOR, f'{self.ip}|{self.tcp_port}')
@@ -340,8 +340,8 @@ class ChordNode:
         conn.sendall(response.encode())
         conn.close()
 
-        print("conn, addr, data", conn, addr, data)
-        print("option, info, ip, port", option, id)
+        # print("conn, addr, data", conn, addr, data)
+        # print("option, info, ip, port", option, id)
 
     def set_first_(self) -> bytes:
         while (True):
@@ -719,11 +719,11 @@ class ChordNode:
                 # si se cayo mi sucesor, me actualizo con quien lo notifico, le pido data si tiene y le comunico que se actualice conmigo
                 if self.successor.id == id:
                     if self.actual_leader_id == id:
-                        self.leader = True
+                        self.send_data_broadcast(UPDATE_LEADER, f"{self.id}|{TCP_PORT}|{id}")
+                        time.sleep(2)
                     #!self._request_data(succ=True)
                     self.successor = NodeReference(address, self.tcp_port)
-                    self.successor.send_data_tcp(
-                        UPDATE_PREDECESSOR, f'{self.ip}|{self.tcp_port}')
+                    self.successor.send_data_tcp(UPDATE_PREDECESSOR, f'{self.ip}|{self.tcp_port}')
                     # si el nodo que me notifico tiene menor id que yo, que actualicen al nodo caido conmigo, pues soy el nuevo lider
                     # en caso contrario, que actualicen con el nodo notificante
                     self.send_data_broadcast(UPDATE_FINGER, f"{id}|{address}|{TCP_PORT}")
