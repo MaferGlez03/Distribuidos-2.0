@@ -366,7 +366,7 @@ class ChordNode:
                         # nos conectamos x via TCP al predecesor
                         s.connect((self.predecessor.ip, self.predecessor.port))
                         # configuramos el socket para lanzar un error si no recibe respuesta en 5 segundos
-                        s.settimeout(5)
+                        s.settimeout(10)
                         print("conecto")
                         op = CHECK_PREDECESSOR
                         data = f"0|0"
@@ -397,7 +397,7 @@ class ChordNode:
                             # seguimos el mismo proceso
                             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                                 s.connect((ip_pred_pred, TCP_PORT))
-                                s.settimeout(5)
+                                s.settimeout(10)
                                 s.sendall(
                                     f'{FALL_SUCC}|{self.ip}|{self.tcp_port}'.encode('utf-8'))
                                 s.recv(1024).decode()
@@ -416,6 +416,8 @@ class ChordNode:
                                     NOTIFY, f"{self.generate_id_(ip_pred_pred)}")
                             else:
                                 print(f"Solo eramos tres nodos me reinicio")
+                                self.send_data_broadcast(UPDATE_FIRST,f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
+                                self.send_data_broadcast(UPDATE_LEADER,f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
                                 self.predecessor = NodeReference(
                                     self.ip, self.tcp_port)
                                 self.successor = NodeReference(
@@ -423,6 +425,8 @@ class ChordNode:
                                 self.finger_table = self.create_finger_table()
                     else:
                         print(f"Solo eramos dos nodos me reinicio")
+                        self.send_data_broadcast(UPDATE_FIRST,f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
+                        self.send_data_broadcast(UPDATE_LEADER,f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
                         self.predecessor = NodeReference(
                             self.ip, self.tcp_port)
                         self.successor = NodeReference(self.ip, self.tcp_port)
