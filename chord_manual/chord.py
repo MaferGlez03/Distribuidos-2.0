@@ -94,109 +94,6 @@ class NodeReference:
             print(f"Mensaje fallido. Operation: {op} Data: {data} Error: {e}")
             return False
 
-    def find_first(self):
-        return self.send_data_tcp(FIND_FIRST, f'{self.id}')
-
-    def request_data(self, id: int):
-        return self.send_data_tcp(REQUEST_DATA, f'{id}')
-
-    def notify(self, id: str):
-        return self.send_data_tcp(NOTIFY, f"{id}")
-
-    def update_finger(self, id: int, ip: str, port: int):
-        return self.send_data_tcp(UPDATE_FINGER, f'{id}|{ip}|{port}')
-
-    def list_group_agenda(self, group_id: int) -> str:
-        response = self.send_data_tcp(LIST_GROUP_AGENDA, str(group_id))
-        return response
-
-    def register(self, id: int, name: str, email: str, password: str) -> str:
-        response = self.send_data_tcp(
-            REGISTER, f'{id}|{name}|{email}|{password}')
-        return response
-
-    def login(self, id: int, email: str, password: str) -> str:
-        response = self.send_data_tcp(LOGIN, f'{id}|{email}|{password}')
-        return response.decode()
-
-    def list_personal_agenda(self, user_id: int) -> str:
-        response = self.send_data_tcp(LIST_PERSONAL_AGENDA, str(user_id))
-        return response
-
-    def list_groups(self, user_id: int) -> str:
-        response = self.send_data_tcp(LIST_GROUPS, str(user_id))
-        return response
-
-    def add_member_to_group(self, id: int, group_id: int, user_id: int) -> str:
-        response = self.send_data_tcp(ADD_MEMBER, f'{id}|{group_id}|{user_id}')
-        return response
-
-    def remove_member_from_group(self, id: int, group_id: int, user_id: int) -> str:
-        response = self.send_data_tcp(
-            REMOVE_MEMBER, f'{id}|{group_id}|{user_id}')
-        return response
-
-    def list_member(self, user_id: int, group_id: int) -> str:
-        response = self.send_data_tcp(LIST_MEMBER, f'{group_id}|{user_id}')
-        return response
-
-    def create_group(self, owner_id: int, name: str) -> str:
-        response = self.send_data_tcp(CREATE_GROUP, f'{name}|{owner_id}')
-        return response
-
-    def delete_group(self, owner_id: int, name: str) -> str:
-        response = self.send_data_tcp(DELETE_GROUP, f'{name}|{owner_id}')
-        return response
-
-    def leave_group(self, owner_id: int, name: str) -> str:
-        response = self.send_data_tcp(LEAVE_GROUP, f'{name}|{owner_id}')
-        return response
-
-    def list_contacts(self, user_id: int) -> str:
-        response = self.send_data_tcp(LIST_CONTACTS, str(user_id))
-        return response
-
-    def remove_contact(self, user_id: int, contact_name: str) -> str:
-        response = self.send_data_tcp(
-            REMOVE_CONTACT, f'{user_id}|{contact_name}')
-        return response
-
-    def add_contact(self, user_id: int, contact_name: str) -> str:
-        response = self.send_data_tcp(ADD_CONTACT, f'{user_id}|{contact_name}')
-        return response
-
-    def list_events_pending(self, user_id: int) -> str:
-        response = self.send_data_tcp(LIST_EVENTS_PENDING, str(user_id))
-        return response
-
-    def list_events(self, user_id: int) -> str:
-        response = self.send_data_tcp(LIST_EVENTS, str(user_id))
-        return response
-
-    def cancel_event(self, event_id: int) -> str:
-        response = self.send_data_tcp(CANCEL_EVENT, str(event_id))
-        return response
-
-    def confirm_event(self, event_id: int) -> str:
-        response = self.send_data_tcp(CONFIRM_EVENT, str(event_id))
-        return response
-
-    def create_event(self, event_id: int, name: str, date: str, privacy: str, group_id=None) -> str:
-        response = self.send_data_tcp(
-            CREATE_EVENT, f'{event_id}|{name}|{date}|{privacy}|{group_id}')
-        return response
-
-    def create_group_event(self, event_id: int, name: str, date: str, group_id=None) -> str:
-        response = self.send_data_tcp(
-            CREATE_GROUP_EVENT, f'{event_id}|{name}|{date}|{group_id}')
-        return response
-
-    def create_individual_event(self, event_id: int, name: str, date: str, owner_id: int, privacy: str, group_id=None) -> str:
-        response = self.send_data_tcp(
-            CREATE_INDIVIDUAL_EVENT, f'{event_id}|{name}|{date}|{owner_id}|{privacy}|{group_id}')
-        return response
-
-
 class ChordNode:
     def __init__(self):
         self.ip = self.get_ip()
@@ -213,6 +110,7 @@ class ChordNode:
         self.repli_pred = ''
         self.repli_pred_pred = ''
         self.actual_first_id = self.id
+        self.actual_leader_id = self.id
 
         self.handler_data = HandleData(self.id)
         # Cola de actualizaciones de finger table
@@ -757,23 +655,25 @@ class ChordNode:
         elif option == UPDATE_FIRST:
             id = int(data[1])
             old_id = int(data[3])
-            print(
-                f"CONFIRMADO: {id} es el nuevo first y {old_id} ya no es first")
             self.actual_first_id = id
-            if self.id == id:
+
+            if self.id == id: 
+                print(f"CONFIRMADO: {id} es el nuevo first")
                 self.first = True
-            elif self.id == old_id:
+            elif self.id == old_id: 
+                print(f"CONFIRMADO: {old_id} ya no es first")
                 self.first = False
 
         elif option == UPDATE_LEADER:
             id = int(data[1])
             old_id = int(data[3])
-            print(
-                f"CONFIRMADO: {id} es el nuevo lider y {old_id} ya no es lider")
+            self.actual_leader_id = id
 
-            if self.id == id:
+            if self.id == id: 
+                print(f"CONFIRMADO: {id} es el nuevo lider")
                 self.leader = True
             elif self.id == old_id:
+                print(f"CONFIRMADO: {old_id} ya no es lider")
                 self.leader = False
 
         elif option == FIND_FIRST_TOTAL:
@@ -905,10 +805,9 @@ class ChordNode:
                     self.finger_table[finger_id] = node
 
     def print_finger_table(self):
-        print(
-            f" Nodo: {self.id} FINGER TABLE. FIRST: {self.first}. LEADER: {self.leader}")
-        print(
-            f"PREDECESOR: {self.predecessor.id} YO: {self.id} SUCCESOR: {self.successor.id}")
+        print(f" Nodo: {self.id} FINGER TABLE. FIRST: {self.first}. LEADER: {self.leader}")
+        print(f"PREDECESOR: {self.predecessor.id} YO: {self.id} SUCCESOR: {self.successor.id}")
+        print(f"ACTUAL FIRST: {self.actual_first_id}")
         for i in range(8):
             finger_id = (self.id + 2**i) % 256
             print(
