@@ -16,8 +16,8 @@ import os
 #region constants
 TCP_PORT = 8000  # puerto de escucha del socket TCP
 UDP_PORT = 8888  # puerto de escucha del socket UDP
-# VOLUME_CONTAINER_PATH = '\\shared'
 VOLUME_CONTAINER_PATH = '/shared'
+# VOLUME_CONTAINER_PATH = '/shared'
 # Definición de operaciones Chord
 JOIN = 'join'
 CONFIRM_JOIN = 'conf_join'
@@ -176,7 +176,7 @@ class ChordNode:
     def __init__(self):
         self.ip = self.get_ip()
         self.id = self.generate_id()
-        self.node_first = self._acquire_lock()
+        #self.node_first = self._acquire_lock()
         self.tcp_port = TCP_PORT
         self.udp_port = UDP_PORT
         self.predecessor = NodeReference(self.ip, self.tcp_port)
@@ -200,10 +200,12 @@ class ChordNode:
 
         threading.Thread(target=self.start_tcp_server).start()
         threading.Thread(target=self.start_broadcast).start()
+        threading.Thread(target=self.check_predecessor).start()
         threading.Thread(target=self.handle_finger_table).start()
         threading.Thread(target=self.handle_finger_table_update).start()
-        threading.Thread(target=self.check_predecessor).start()
-        threading.Thread(target=self.send_id_broadcast).start()
+        #threading.Thread(target=self.send_id_broadcast).start()
+        #threading.Thread(target=self.set_first).start()
+        #threading.Thread(target=self.set_leader).start()
 
         self.join()
         
@@ -410,11 +412,19 @@ class ChordNode:
 
         print("conn, addr, data", conn, addr, data)
         print("option, info, ip, port", option, id)
+        
+    def set_first_(self) -> bytes:
+        while(True):
+            self.first = True if self.predecessor.id == self.id or self.predecessor.id > self.id else False
+    def set_leader_(self):
+        while(True):
+            self.leader = True if self.predecessor.id == self.id or self.successor.id < self.id else False
 
     def check_predecessor(self):
         print(f"el id de mi predecesor es {self.predecessor.id} y el mio {self.id}")
         while True:
             if self.predecessor.id != self.id:
+                print(f"PREDECESOR: {self.predecessor.id}   YO: {self.id}    SUCESOR: {self.successor.id}")
                 print("Somos diferentes")
                 
                 try:
@@ -526,7 +536,8 @@ class ChordNode:
             id = self.generate_id_(ip)
             # No hacer nada si recibo la operacion de mi mismo
             if self.id == id:
-                pass
+                time.sleep(2)
+            
             # Me estoy uniendo a una red donde solo hay un nodo
             elif self.id == self.successor.id and self.id == self.predecessor.id:
                 print(f"Me estoy uniendo a una red donde solo hay un nodo({self.id})")
@@ -824,6 +835,7 @@ class ChordNode:
         for i in range(8):
             finger_id = (self.id + 2**i) % 256
             print(f"id: {finger_id} |||| owner: {self.finger_table[finger_id].id} \n")
+        print(f"PREDECESOR: {self.predecessor.id}   YO: {self.id}    SUCESOR: {self.successor.id}")
             
     def verificar_ip_activa(self, ip, puerto):
         """
@@ -947,17 +959,16 @@ class ChordNode:
 
 
     def _acquire_lock(self):
-        """Intenta adquirir el lock y devuelve True si este nodo es el primero."""
+        """
+        Intenta adquirir el lock y devuelve True si este nodo es el primero.
+        Este método es compatible con Windows.
+        """
         lock_file = os.path.join(VOLUME_CONTAINER_PATH, "lockfile")
 
-        # Ensure the directory exists
-        lock_dir = os.path.dirname(lock_file)
-        if not os.path.exists(lock_dir):
-            os.makedirs(lock_dir, exist_ok=True)  # Create the directory if it doesn't exist
-
         try:
-            # On Windows, use open() with 'x' mode for exclusive creation
-            with open(lock_file, 'x') as f:
+            # Intenta crear el archivo de lock de manera atómica
+            fd = os.open(lock_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            with os.fdopen(fd, 'w') as f:
                 f.write(f"lock{self.id}")  # Escribe algo en el archivo
 
             # Si llegamos aquí, este nodo es el primero
@@ -967,7 +978,10 @@ class ChordNode:
             # Si el archivo ya existe, otro nodo ya adquirió el lock
             print(f"NODO {self.id} no es el primero!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             return False
-
+        except Exception as e:
+            # Manejar cualquier otro error que pueda ocurrir en Windows
+            print(f"Error en NODO {self.id} al intentar adquirir el lock: {e}")
+            return False
     def get_successor_list(self, k):
         """
         Retorna una lista de hasta k sucesores del nodo actual en el anillo Chord.
