@@ -16,8 +16,6 @@ import os
 #region constants
 TCP_PORT = 8000  # puerto de escucha del socket TCP
 UDP_PORT = 8888  # puerto de escucha del socket UDP
-VOLUME_CONTAINER_PATH = '/shared'
-# VOLUME_CONTAINER_PATH = '/shared'
 # Definición de operaciones Chord
 JOIN = 'join'
 CONFIRM_JOIN = 'conf_join'
@@ -176,7 +174,6 @@ class ChordNode:
     def __init__(self):
         self.ip = self.get_ip()
         self.id = self.generate_id()
-        #self.node_first = self._acquire_lock()
         self.tcp_port = TCP_PORT
         self.udp_port = UDP_PORT
         self.predecessor = NodeReference(self.ip, self.tcp_port)
@@ -203,9 +200,8 @@ class ChordNode:
         threading.Thread(target=self.check_predecessor).start()
         threading.Thread(target=self.handle_finger_table).start()
         threading.Thread(target=self.handle_finger_table_update).start()
-        #threading.Thread(target=self.send_id_broadcast).start()
-        #threading.Thread(target=self.set_first).start()
-        #threading.Thread(target=self.set_leader).start()
+        # threading.Thread(target=self.check_predecessor).start()
+        # threading.Thread(target=self.send_id_broadcast).start()
 
         self.join()
         
@@ -832,6 +828,7 @@ class ChordNode:
 
     def print_finger_table(self):
         print(f" Nodo: {self.id} FINGER TABLE. FIRST: {self.first}. LEADER: {self.leader}")
+        print(f"PREDECESOR: {self.predecessor.id} YO: {self.id} SUCCESOR: {self.successor.id}")
         for i in range(8):
             finger_id = (self.id + 2**i) % 256
             print(f"id: {finger_id} |||| owner: {self.finger_table[finger_id].id} \n")
@@ -955,33 +952,7 @@ class ChordNode:
         for _ in range(PROPAGATION):
             q.push_front(self.id)
         return q
-    
 
-
-    def _acquire_lock(self):
-        """
-        Intenta adquirir el lock y devuelve True si este nodo es el primero.
-        Este método es compatible con Windows.
-        """
-        lock_file = os.path.join(VOLUME_CONTAINER_PATH, "lockfile")
-
-        try:
-            # Intenta crear el archivo de lock de manera atómica
-            fd = os.open(lock_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-            with os.fdopen(fd, 'w') as f:
-                f.write(f"lock{self.id}")  # Escribe algo en el archivo
-
-            # Si llegamos aquí, este nodo es el primero
-            print(f"NODO {self.id} adquirió el lock!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!.")
-            return True
-        except FileExistsError:
-            # Si el archivo ya existe, otro nodo ya adquirió el lock
-            print(f"NODO {self.id} no es el primero!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            return False
-        except Exception as e:
-            # Manejar cualquier otro error que pueda ocurrir en Windows
-            print(f"Error en NODO {self.id} al intentar adquirir el lock: {e}")
-            return False
     def get_successor_list(self, k):
         """
         Retorna una lista de hasta k sucesores del nodo actual en el anillo Chord.
@@ -1011,42 +982,6 @@ class ChordNode:
             current = current.successor
 
         return successor_list[:k]  # Retornar solo k nodos
-
-#region invent
-    def update_successor_list(self, k=3):
-        """
-        Mantiene actualizada la lista de k sucesores y maneja fallos.
-        """
-        while True:
-            time.sleep(5)  # Esperar antes de la próxima actualización
-            
-            # Verificar si el primer sucesor sigue activo
-            if not self.verificar_ip_activa(self.successor.ip, self.successor.port):
-                print(f"⚠️ Sucesor {self.successor.id} ha fallado. Buscando reemplazo...")
-
-                # Recuperar datos del nodo caído
-                self.recover_data_from_failed_node(self.successor)
-
-                # Reemplazar sucesor y actualizar la lista
-                successor_list = self.get_successor_list(k)
-                if successor_list:
-                    self.successor = successor_list[0]
-                    self.successor_list = successor_list
-                    print(f"✅ Nuevo sucesor asignado: {self.successor.id}")
-                else:
-                    print("❌ No hay sucesores disponibles, el anillo puede estar fragmentado.")
-
-    def recover_data_from_failed_node(self, failed_node):
-        """
-        Recupera y repropaga los datos de un nodo caído.
-        """
-        successor = self.successor  # Nuevo nodo responsable
-        if successor:
-            keys_to_recover = failed_node.get_all_keys()
-            for key, value in keys_to_recover.items():
-                successor.store_with_replication(key, value, k)
-            print(f"🔄 Datos del nodo {failed_node.id} han sido recuperados y replicados.")
-#endregion
     
     def send_id_broadcast(self):
         while True:
