@@ -229,7 +229,6 @@ def main():
     args = parser.parse_args()
 
     if args.build:
-        clean_volume_host(VOLUME_HOST_PATH)
         restart_process()
         
     if args.restart:
