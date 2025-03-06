@@ -837,35 +837,7 @@ class ChordNode:
             print(f"id: {finger_id} |||| owner: {self.finger_table[finger_id].id} \n")
         print(f"PREDECESOR: {self.predecessor.id}   YO: {self.id}    SUCESOR: {self.successor.id}")
             
-    def verificar_ip_activa(self, ip, puerto):
-        """
-        Verifica si una IP está activa en un puerto TCP específico.
-
-        :param ip: Dirección IP a verificar (str).
-        :param puerto: Puerto TCP a verificar (int).
-        :return: True si la IP está activa en el puerto, False en caso contrario.
-        """
-        # Crear un socket TCP
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(3)  # Tiempo de espera máximo en segundos
-
-        try:
-            # Intentar conectar al puerto
-            resultado = sock.connect_ex((ip, puerto))
-            if resultado == 0:
-                print(f"[+] La IP {ip} está activa en el puerto {puerto}.")
-                print(f"{self.id}|{self.predecessor.id}|{self.successor.id}")
-                print(f"First: {self.first} | Leader: {self.leader}")
-                return True
-            else:
-                print(f"[-] La IP {ip} no responde en el puerto {puerto}. Código de error: {resultado}")
-                return False
-        except Exception as e:
-            print(f"[!] Error al conectar con {ip}:{puerto}. Detalles: {e}")
-            return False
-        finally:
-            # Cerrar el socket
-            sock.close()
+   
 
     def _closest_preceding_node(self, id) -> NodeReference:
         """Devuelve el nodo más cercano a un ID en la finger table."""
@@ -1012,42 +984,7 @@ class ChordNode:
 
         return successor_list[:k]  # Retornar solo k nodos
 
-#region invent
-    def update_successor_list(self, k=3):
-        """
-        Mantiene actualizada la lista de k sucesores y maneja fallos.
-        """
-        while True:
-            time.sleep(5)  # Esperar antes de la próxima actualización
-            
-            # Verificar si el primer sucesor sigue activo
-            if not self.verificar_ip_activa(self.successor.ip, self.successor.port):
-                print(f"⚠️ Sucesor {self.successor.id} ha fallado. Buscando reemplazo...")
 
-                # Recuperar datos del nodo caído
-                self.recover_data_from_failed_node(self.successor)
-
-                # Reemplazar sucesor y actualizar la lista
-                successor_list = self.get_successor_list(k)
-                if successor_list:
-                    self.successor = successor_list[0]
-                    self.successor_list = successor_list
-                    print(f"✅ Nuevo sucesor asignado: {self.successor.id}")
-                else:
-                    print("❌ No hay sucesores disponibles, el anillo puede estar fragmentado.")
-
-    def recover_data_from_failed_node(self, failed_node):
-        """
-        Recupera y repropaga los datos de un nodo caído.
-        """
-        successor = self.successor  # Nuevo nodo responsable
-        if successor:
-            keys_to_recover = failed_node.get_all_keys()
-            for key, value in keys_to_recover.items():
-                successor.store_with_replication(key, value, k)
-            print(f"🔄 Datos del nodo {failed_node.id} han sido recuperados y replicados.")
-#endregion
-    
     def send_id_broadcast(self):
         while True:
             op = BROADCAST_ID
