@@ -13,4 +13,7 @@ COPY ./chord.py /app/chord_dht/
 COPY ./storage.py /app/chord_dht/
 COPY ./handle_data.py /app/chord_dht/
 COPY ./flexible_queue.py /app/chord_dht/
+COPY ./certificate.pem /app/chord_dht/
+COPY ./private_key.pem /app/chord_dht/
+
 CMD ["python", "-u", "chord_dht/chord.py"]

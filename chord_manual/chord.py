@@ -11,6 +11,7 @@ from storage import Database
 from handle_data import HandleData
 from flexible_queue import FlexibleQueue
 import os
+import ssl
 # endregion
 
 # region constants
@@ -57,7 +58,7 @@ REMOVE_MEMBER = 'remove_member'
 LIST_GROUPS = 'list_groups'
 CREATE_EVENT = 'create_event'
 CREATE_GROUP_EVENT = 'create_group_event'
-CREATE_INDIVIDUAL_EVENT = 'create_individual_event'
+CREATE_INDIVIDUAL_EVENT ='create_individual_event'
 CONFIRM_EVENT = 'confirm_event'
 CANCEL_EVENT = 'cancel_event'
 LIST_EVENTS = 'list_events'
@@ -65,6 +66,8 @@ LIST_EVENTS_PENDING = 'list_events_pending'
 LIST_CONTACTS = 'list_contacts'
 REMOVE_CONTACT = 'remove_contact'
 LIST_MEMBER = 'list_member'
+BROADCAST_IP = '255.255.255.255'
+
 BROADCAST_ID = 'broad_id'
 BROADCAST_IP = '255.255.255.255'
 # endregion
@@ -87,17 +90,18 @@ class NodeReference:
         return ret
 
     def send_data_tcp(self, op, data):
-        try:
-            # 🔹 Cambiar a TCP (SOCK_STREAM)
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect((self.ip, self.port))  # 🔹 Conectar al servidor TCP
-                # 🔹 Enviar mensaje correctamente
-                s.sendall(f'{op}|{data}'.encode('utf-8'))
-                # print(f"Mensaje enviado correctamente vía TCP. Operation: {op} Data: {data}")
-                return s.recv(1024)
-        except Exception as e:
-            print(f"Mensaje fallido. Operation: {op} Data: {data} Error: {e}")
-            return False
+     try:
+         context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+         context.check_hostname = False  # Desactivar verificación del hostname
+         context.verify_mode = ssl.CERT_NONE 
+ 
+         with socket.create_connection((self.ip, self.port)) as s:
+             with context.wrap_socket(s, server_hostname=self.ip) as secure_sock:
+                 secure_sock.sendall(f'{op}|{data}'.encode('utf-8'))
+                 return secure_sock.recv(1024)  # Recibir respuesta
+     except Exception as e:
+         print(f"❌ Error en send_data_tcp: {e}")
+         return False
 
 
 class ChordNode:
@@ -172,11 +176,11 @@ class ChordNode:
     def login_user(self, id: int, name: str, password: str) -> str:
         if id > self.actual_leader_id:
             if self.first:
-                return self._register(id, name, email, password)
+                return self._login_user(id, name, password)
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+                return self.first_node.send_data_tcp(LOGIN, f"{id}|{name}|{password}")
 
         elif id < self.id:
             if id > self.predecessor.id or self.first:
@@ -311,177 +315,429 @@ class ChordNode:
             print("Voy a la finger table")
             return self._closest_preceding_node(id).send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
 
-    def _register(self, id: int, name: str, email: str, password: str) -> str:
-
-        success = self.db.register_user(name, email, password)
-        print(success)
-        return (f"User {name} registered") if success else (f"Failed to register user {name}")
-
-    def register(self, id: int, name: str, email: str, password: str) -> str:
-        print(f"register {id} {self.id}")
+  
+    def confirm_event(self, id: int, user_id: int, event_id: int) -> str:
+        print(f"confirm_event {id} {self.id}")
         if id > self.actual_leader_id:
             if self.first:
-                print(f"voy a registrar a { id } yo con {self.id}")
-                return self._register(id, name, email, password)
+                print(f"voy a confirmar evento {event_id} yo con {self.id}")
+                return self._confirm_event(user_id, event_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
-
+                return self.first_node.send_data_tcp(CONFIRM_EVENT, f"{id}|{user_id}|{event_id}")
         elif id < self.id:
             if id > self.predecessor.id or self.first:
-                return self._register(id, name, email, password)
+                return self._confirm_event(user_id, event_id)
             else:
-                # Reenviar al "first"
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+                return self.first_node.send_data_tcp(CONFIRM_EVENT, f"{id}|{user_id}|{event_id}")
         else:
-            # Registrar localmente
             print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+            return self._closest_preceding_node(id).send_data_tcp(CONFIRM_EVENT, f"{id}|{user_id}|{event_id}")
 
-    def _register(self, id: int, name: str, email: str, password: str) -> str:
-
-        success = self.db.register_user(name, email, password)
-        print(success)
-        return (f"User {name} registered") if success else (f"Failed to register user {name}")
-
-    def register(self, id: int, name: str, email: str, password: str) -> str:
-        print(f"register {id} {self.id}")
+    def cancel_event(self, id: int, user_id: int, event_id: int) -> str:
+        print(f"cancel_event {id} {self.id}")
         if id > self.actual_leader_id:
             if self.first:
-                print(f"voy a registrar a { id } yo con {self.id}")
-                return self._register(id, name, email, password)
+                print(f"voy a cancelar evento {event_id} yo con {self.id}")
+                return self._cancel_event(user_id, event_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
-
+                return self.first_node.send_data_tcp(CANCEL_EVENT, f"{id}|{user_id}|{event_id}")
         elif id < self.id:
             if id > self.predecessor.id or self.first:
-                return self._register(id, name, email, password)
+                return self._cancel_event(user_id, event_id)
             else:
-                # Reenviar al "first"
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+                return self.first_node.send_data_tcp(CANCEL_EVENT, f"{id}|{user_id}|{event_id}")
         else:
-            # Registrar localmente
             print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+            return self._closest_preceding_node(id).send_data_tcp(CANCEL_EVENT, f"{id}|{user_id}|{event_id}")
 
-    def _register(self, id: int, name: str, email: str, password: str) -> str:
-
-        success = self.db.register_user(name, email, password)
-        print(success)
-        return (f"User {name} registered") if success else (f"Failed to register user {name}")
-
-    def register(self, id: int, name: str, email: str, password: str) -> str:
-        print(f"register {id} {self.id}")
+    def list_events(self, id: int, user_id: int) -> str:
+        print(f"list_events {id} {self.id}")
         if id > self.actual_leader_id:
             if self.first:
-                print(f"voy a registrar a { id } yo con {self.id}")
-                return self._register(id, name, email, password)
+                print(f"voy a listar eventos de {user_id} yo con {self.id}")
+                return self._list_events(user_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
-
+                return self.first_node.send_data_tcp(LIST_EVENTS, f"{id}|{user_id}")
         elif id < self.id:
             if id > self.predecessor.id or self.first:
-                return self._register(id, name, email, password)
+                return self._list_events(user_id)
             else:
-                # Reenviar al "first"
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+                return self.first_node.send_data_tcp(LIST_EVENTS, f"{id}|{user_id}")
         else:
-            # Registrar localmente
             print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+            return self._closest_preceding_node(id).send_data_tcp(LIST_EVENTS, f"{id}|{user_id}")
 
-    def _register(self, id: int, name: str, email: str, password: str) -> str:
-
-        success = self.db.register_user(name, email, password)
-        print(success)
-        return (f"User {name} registered") if success else (f"Failed to register user {name}")
-
-    def register(self, id: int, name: str, email: str, password: str) -> str:
-        print(f"register {id} {self.id}")
+    def list_events_pending(self, id: int, user_id: int) -> str:
+        print(f"list_events_pending {id} {self.id}")
         if id > self.actual_leader_id:
             if self.first:
-                print(f"voy a registrar a { id } yo con {self.id}")
-                return self._register(id, name, email, password)
+                print(f"voy a listar eventos pendientes de {user_id} yo con {self.id}")
+                return self._list_events_pending(user_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
-
+                return self.first_node.send_data_tcp(LIST_EVENTS_PENDING, f"{id}|{user_id}")
         elif id < self.id:
             if id > self.predecessor.id or self.first:
-                return self._register(id, name, email, password)
+                return self._list_events_pending(user_id)
             else:
-                # Reenviar al "first"
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+                return self.first_node.send_data_tcp(LIST_EVENTS_PENDING, f"{id}|{user_id}")
         else:
-            # Registrar localmente
             print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+            return self._closest_preceding_node(id).send_data_tcp(LIST_EVENTS_PENDING, f"{id}|{user_id}")
 
-    def _register(self, id: int, name: str, email: str, password: str) -> str:
-
-        success = self.db.register_user(name, email, password)
-        print(success)
-        return (f"User {name} registered") if success else (f"Failed to register user {name}")
-
-    def register(self, id: int, name: str, email: str, password: str) -> str:
-        print(f"register {id} {self.id}")
+    def add_contact(self, id: int, user_id: int, contact_name: str, owner_id: int) -> str:
+        print(f"add_contact {id} {self.id}")
         if id > self.actual_leader_id:
             if self.first:
-                print(f"voy a registrar a { id } yo con {self.id}")
-                return self._register(id, name, email, password)
+                print(f"voy a añadir contacto {contact_name} yo con {self.id}")
+                return self._add_contact(user_id, contact_name, owner_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
-
+                return self.first_node.send_data_tcp(ADD_CONTACT, f"{id}|{user_id}|{contact_name}|{owner_id}")
         elif id < self.id:
             if id > self.predecessor.id or self.first:
-                return self._register(id, name, email, password)
+                return self._add_contact(user_id, contact_name, owner_id)
             else:
-                # Reenviar al "first"
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+                return self.first_node.send_data_tcp(ADD_CONTACT, f"{id}|{user_id}|{contact_name}|{owner_id}")
         else:
-            # Registrar localmente
             print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+            return self._closest_preceding_node(id).send_data_tcp(ADD_CONTACT, f"{id}|{user_id}|{contact_name}|{owner_id}")
 
-    def _register(self, id: int, name: str, email: str, password: str) -> str:
+    def remove_contact(self, id: int, user_id: int, contact_id: int) -> str:
+        print(f"remove_contact {id} {self.id}")
+        if id > self.actual_leader_id:
+            if self.first:
+                print(f"voy a eliminar contacto {contact_id} yo con {self.id}")
+                return self._remove_contact(user_id, contact_id)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(REMOVE_CONTACT, f"{id}|{user_id}|{contact_id}")
+        elif id < self.id:
+            if id > self.predecessor.id or self.first:
+                return self._remove_contact(user_id, contact_id)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(REMOVE_CONTACT, f"{id}|{user_id}|{contact_id}")
+        else:
+            print("Voy a la finger table")
+            return self._closest_preceding_node(id).send_data_tcp(REMOVE_CONTACT, f"{id}|{user_id}|{contact_id}")
 
-        success = self.db.register_user(name, email, password)
-        print(success)
-        return (f"User {name} registered") if success else (f"Failed to register user {name}")
+    def list_contacts(self, id: int, user_id: int) -> str:
+        print(f"list_contacts {id} {self.id}")
+        if id > self.actual_leader_id:
+            if self.first:
+                print(f"voy a listar contactos de {user_id} yo con {self.id}")
+                return self._list_contacts(user_id)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(LIST_CONTACTS, f"{id}|{user_id}")
+        elif id < self.id:
+            if id > self.predecessor.id or self.first:
+                return self._list_contacts(user_id)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(LIST_CONTACTS, f"{id}|{user_id}")
+        else:
+            print("Voy a la finger table")
+            return self._closest_preceding_node(id).send_data_tcp(LIST_CONTACTS, f"{id}|{user_id}")
+
+    def create_group(self, id: int, owner_id: int, name: str) -> str:
+        print(f"create_group {id} {self.id}")
+        if id > self.actual_leader_id:
+            if self.first:
+                print(f"voy a crear grupo {name} yo con {self.id}")
+                return self._create_group(owner_id, name)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(CREATE_GROUP, f"{id}|{owner_id}|{name}")
+        elif id < self.id:
+            if id > self.predecessor.id or self.first:
+                return self._create_group(owner_id, name)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(CREATE_GROUP, f"{id}|{owner_id}|{name}")
+        else:
+            print("Voy a la finger table")
+            return self._closest_preceding_node(id).send_data_tcp(CREATE_GROUP, f"{id}|{owner_id}|{name}")
+
+    def delete_group(self, id: int, owner_id: int, name: str) -> str:
+        print(f"delete_group {id} {self.id}")
+        if id > self.actual_leader_id:
+            if self.first:
+                print(f"voy a eliminar grupo {name} yo con {self.id}")
+                return self._delete_group(owner_id, name)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(DELETE_GROUP, f"{id}|{owner_id}|{name}")
+        elif id < self.id:
+            if id > self.predecessor.id or self.first:
+                return self._delete_group(owner_id, name)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(DELETE_GROUP, f"{id}|{owner_id}|{name}")
+        else:
+            print("Voy a la finger table")
+            return self._closest_preceding_node(id).send_data_tcp(DELETE_GROUP, f"{id}|{owner_id}|{name}")
+
+    def leave_group(self, id: int, name: str, owner_id: int) -> str:
+        print(f"leave_group {id} {self.id}")
+        if id > self.actual_leader_id:
+            if self.first:
+                print(f"voy a abandonar grupo {name} yo con {self.id}")
+                return self._leave_group(owner_id, name)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(LEAVE_GROUP, f"{id}|{name}|{owner_id}")
+        elif id < self.id:
+            if id > self.predecessor.id or self.first:
+                return self._leave_group(owner_id, name)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(LEAVE_GROUP, f"{id}|{name}|{owner_id}")
+        else:
+            print("Voy a la finger table")
+            return self._closest_preceding_node(id).send_data_tcp(LEAVE_GROUP, f"{id}|{name}|{owner_id}")
+
+    def add_member_to_group(self, id: int, group_id: int, user_id: int, role: str) -> str:
+        print(f"add_member_to_group {id} {self.id}")
+        if id > self.actual_leader_id:
+            if self.first:
+                print(f"voy a añadir miembro {user_id} al grupo {group_id} yo con {self.id}")
+                return self._add_member_to_group(group_id, user_id, role)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(ADD_MEMBER, f"{id}|{group_id}|{user_id}|{role}")
+        elif id < self.id:
+            if id > self.predecessor.id or self.first:
+                return self._add_member_to_group(group_id, user_id, role)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(ADD_MEMBER, f"{id}|{group_id}|{user_id}|{role}")
+        else:
+            print("Voy a la finger table")
+            return self._closest_preceding_node(id).send_data_tcp(ADD_MEMBER, f"{id}|{group_id}|{user_id}|{role}")
+
+    def remove_member_from_group(self, id: int, group_id: int, user_id: int) -> str:
+        print(f"remove_member_from_group {id} {self.id}")
+        if id > self.actual_leader_id:
+            if self.first:
+                print(f"voy a eliminar miembro {user_id} del grupo {group_id} yo con {self.id}")
+                return self._remove_member_from_group(group_id, user_id)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(REMOVE_MEMBER, f"{id}|{group_id}|{user_id}")
+        elif id < self.id:
+            if id > self.predecessor.id or self.first:
+                return self._remove_member_from_group(group_id, user_id)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(REMOVE_MEMBER, f"{id}|{group_id}|{user_id}")
+        else:
+            print("Voy a la finger table")
+            return self._closest_preceding_node(id).send_data_tcp(REMOVE_MEMBER, f"{id}|{group_id}|{user_id}")
+
+    def list_group(self, id: int, user_id: int) -> str:
+        print(f"list_group {id} {self.id}")
+        if id > self.actual_leader_id:
+            if self.first:
+                print(f"voy a listar grupos de {user_id} yo con {self.id}")
+                return self._list_group(user_id)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(LIST_GROUPS, f"{id}|{user_id}")
+        elif id < self.id:
+            if id > self.predecessor.id or self.first:
+                return self._list_group(user_id)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(LIST_GROUPS, f"{id}|{user_id}")
+        else:
+            print("Voy a la finger table")
+            return self._closest_preceding_node(id).send_data_tcp(LIST_GROUPS, f"{id}|{user_id}")
+
+    def list_member(self, id: int, user_id: int, group_id: int) -> str:
+        print(f"list_member {id} {self.id}")
+        if id > self.actual_leader_id:
+            if self.first:
+                print(f"voy a listar miembros del grupo {group_id} yo con {self.id}")
+                return self._list_member(user_id, group_id)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(LIST_MEMBER, f"{id}|{user_id}|{group_id}")
+        elif id < self.id:
+            if id > self.predecessor.id or self.first:
+                return self._list_member(user_id, group_id)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(LIST_MEMBER, f"{id}|{user_id}|{group_id}")
+        else:
+            print("Voy a la finger table")
+            return self._closest_preceding_node(id).send_data_tcp(LIST_MEMBER, f"{id}|{user_id}|{group_id}")
+
+    def list_personal_agenda(self, id: int, user_id: int) -> str:
+        print(f"list_personal_agenda {id} {self.id}")
+        if id > self.actual_leader_id:
+            if self.first:
+                print(f"voy a listar agenda personal de {user_id} yo con {self.id}")
+                return self._list_personal_agenda(user_id)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(LIST_PERSONAL_AGENDA, f"{id}|{user_id}")
+        elif id < self.id:
+            if id > self.predecessor.id or self.first:
+                return self._list_personal_agenda(user_id)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(LIST_PERSONAL_AGENDA, f"{id}|{user_id}")
+        else:
+            print("Voy a la finger table")
+            return self._closest_preceding_node(id).send_data_tcp(LIST_PERSONAL_AGENDA, f"{id}|{user_id}")
+
+    def list_group_agenda(self, id: int, group_id: int) -> str:
+        print(f"list_group_agenda {id} {self.id}")
+        if id > self.actual_leader_id:
+            if self.first:
+                print(f"voy a listar agenda del grupo {group_id} yo con {self.id}")
+                return self._list_group_agenda(group_id)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(LIST_GROUP_AGENDA, f"{id}|{group_id}")
+        elif id < self.id:
+            if id > self.predecessor.id or self.first:
+                return self._list_group_agenda(group_id)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(LIST_GROUP_AGENDA, f"{id}|{group_id}")
+        else:
+            print("Voy a la finger table")
+            return self._closest_preceding_node(id).send_data_tcp(LIST_GROUP_AGENDA, f"{id}|{group_id}")
+
+    # Funciones privadas (_)
+
+    def _confirm_event(self, user_id: int, event_id: int) -> str:
+        success = self.db.confirm_event(event_id)
+        return "Event confirmed" if success else "Failed to confirm event"
+
+    def _cancel_event(self, user_id: int, event_id: int) -> str:
+        success = self.db.cancel_event(event_id)
+        return "Event canceled" if success else "Failed to cancel event"
+
+    def _list_events(self, user_id: int) -> str:
+        events = self.db.list_events(user_id)
+        return "\n".join([str(event) for event in events])
+
+    def _list_events_pending(self, user_id: int) -> str:
+        events = self.db.list_events_pending(user_id)
+        return "\n".join([str(event) for event in events])
+
+    def _add_contact(self, user_id: int, contact_name: str, owner_id: int) -> str:
+        success = self.db.add_contact(user_id, contact_name, owner_id)
+        return "Contact added" if success else "Failed to add contact"
+
+    def _remove_contact(self, user_id: int, contact_id: int) -> str:
+        success = self.db.delete_contact(contact_id)
+        return "Contact removed" if success else "Failed to remove contact"
+
+    def _list_contacts(self, user_id: int) -> str:
+        contacts = self.db.list_contacts(user_id)
+        return "\n".join(contacts)
+
+    def _create_group(self, owner_id: int, name: str) -> str:
+        success = self.db.create_group(name, owner_id)
+        return "Group created" if success else "Failed to create group"
+
+    def _delete_group(self, owner_id: int, name: str) -> str:
+        success = self.db.delete_group(name)
+        return "Group deleted" if success else "Failed to delete group"
+
+    def _leave_group(self, owner_id: int, name: str) -> str:
+        success = self.db.leave_group(name)
+        return "Group leaved" if success else "Failed to leave group"
+
+    def _add_member_to_group(self, group_id: int, user_id: int, role: str) -> str:
+        success = self.db.add_member_to_group(group_id, user_id, role)
+        return "Member added" if success else "Failed to add member"
+
+    def _remove_member_from_group(self, group_id: int, user_id: int) -> str:
+        success = self.db.remove_member_from_group(group_id, user_id)
+        return "Member removed" if success else "Failed to remove member"
+
+    def _list_group(self, user_id: int) -> str:
+        agenda = self.db.list_groups(user_id)
+        groups_list = [{'id': g[0], 'name': g[1]} for g in agenda]
+        return "\n".join(groups_list)
+
+    def _list_member(self, user_id: int, group_id: int) -> str:
+        agenda = self.db.list_members(group_id)
+        return "\n".join(agenda)
+
+    def _list_personal_agenda(self, user_id: int) -> str:
+        agenda = self.db.list_personal_agenda(user_id)
+        return "\n".join(agenda)
+
+    def _list_group_agenda(self, group_id: int) -> str:
+        agenda = self.db.list_group_agenda(group_id)
+        return "\n".join(agenda)
 
 # region CHORD
     def start_tcp_server(self):
-        """Iniciar el servidor TCP."""
+        """Iniciar el servidor TCP con SSL."""
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(certfile="/app/chord_dht/certificate.pem", keyfile="/app/chord_dht/private_key.pem")
+
+
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             s.bind((self.ip, self.tcp_port))
-            print(f'Socket TCP binded to ({self.ip}, {self.tcp_port})')
             s.listen()
 
-            # Se queda escuchando cualquier mensaje entrante
-            while True:
-                time.sleep(1)
-                conn, addr = s.accept()
-                client = threading.Thread(target=self._handle_client_tcp, args=(conn, addr))
-                client.start()
+            print(f'🔒 Servidor SSL TCP en ({self.ip}, {self.tcp_port})')
+
+            with context.wrap_socket(s, server_side=True) as secure_socket:
+                while True:
+                    conn, addr = secure_socket.accept()
+                    client = threading.Thread(target=self._handle_client_tcp, args=(conn, addr))
+                    client.start()
 
     def _handle_client_tcp(self, conn: socket.socket, addr: tuple):
         data = conn.recv(1024).decode().split('|')  # operation | id | port
@@ -800,21 +1056,25 @@ class ChordNode:
 
                 try:
                     print("Voy a tratar de conectar")
-                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                        # nos conectamos x via TCP al predecesor
-                        s.connect((self.predecessor.ip, self.predecessor.port))
-                        # configuramos el socket para lanzar un error si no recibe respuesta en 5 segundos
-                        s.settimeout(10)
-                        print("conecto")
-                        op = CHECK_PREDECESSOR
-                        data = f"0|0"
-                        # chequeamos que no se ha caido el predecesor
-                        s.sendall(f'{op}|{data}'.encode('utf-8'))
-                        # guardamos la info recibida
-                        self.pred_repli = s.recv(1024).decode()
-                        # guardamos el id del predecesor de nuestro predecesor
-                        ip_pred_pred = self.pred_repli.split('|')[-1]
+                    with socket.create_connection((self.predecessor.ip, self.predecessor.port)) as s:
+                        # Configurar SSL para la conexión con el predecesor
+                        context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+                        context.check_hostname = False  # Desactivar verificación del hostname
+                        context.verify_mode = ssl.CERT_NONE 
 
+                        with context.wrap_socket(s, server_hostname=self.predecessor.ip) as secure_sock:
+                            # Configuramos el socket para lanzar un error si no recibe respuesta en 10 segundos
+                            secure_sock.settimeout(10)
+                            print("conecto")
+
+                            op = CHECK_PREDECESSOR
+                            data = f"0|0"
+                            # Chequeamos que no se ha caído el predecesor
+                            secure_sock.sendall(f'{op}|{data}'.encode('utf-8'))
+                            # Guardamos la info recibida
+                            self.pred_repli = secure_sock.recv(1024).decode()
+                            # Guardamos el id del predecesor de nuestro predecesor
+                            ip_pred_pred = self.pred_repli.split('|')[-1]
                 except:
                     print(
                         f"El servidor {self.predecessor.ip} se ha desconectado")
@@ -831,11 +1091,16 @@ class ChordNode:
                         try:
                             # tratamos de conectarnos con el predecesor de nuestro predecesor para comunicarle que se cayo su sucesor
                             # seguimos el mismo proceso
-                            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                                s.connect((ip_pred_pred, TCP_PORT))
-                                s.settimeout(10)
-                                s.sendall(f'{FALL_SUCC}|{self.ip}|{self.tcp_port}'.encode('utf-8'))
-                                s.recv(1024).decode()
+                            with socket.create_connection((ip_pred_pred, TCP_PORT)) as s:
+                                # Configurar SSL para la conexión con el predecesor del predecesor
+                                context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+                                context.check_hostname = False  # Desactivar verificación del hostname
+                                context.verify_mode = ssl.CERT_NONE 
+                            
+                                with context.wrap_socket(s, server_hostname=ip_pred_pred) as secure_sock:
+                                    secure_sock.settimeout(10)  # Configurar timeout
+                                    secure_sock.sendall(f'{FALL_SUCC}|{self.ip}|{self.tcp_port}'.encode('utf-8'))
+                                    secure_sock.recv(1024).decode()  # Esperar respuesta
                                 print(self.predecessor.id)
                                 print(self.successor.id)
                             # Iniciar actualizaciones de listas de sucesores a partir del predecesor del predecesor
