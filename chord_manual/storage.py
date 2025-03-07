@@ -98,7 +98,7 @@ class Database:
         self.session.close()
 
     # Métodos para usuarios
-    def register_user(self, name: str, email: str, password: str) -> bool:
+    def register_user(self, name: str, email: str, password: str):
         """
         Registra un nuevo usuario con contraseña segura.
         """

@@ -97,6 +97,7 @@ class NodeReference:
             print(f"Mensaje fallido. Operation: {op} Data: {data} Error: {e}")
             return False
 
+
 class ChordNode:
     def __init__(self):
         self.ip = self.get_ip()
@@ -114,6 +115,7 @@ class ChordNode:
         self.repli_pred_pred = ''
         self.actual_first_id = self.id
         self.actual_leader_id = self.id
+        self.first_node = NodeReference(self.ip, self.tcp_port)
 
         self.handler_data = HandleData(self.id)
         # Cola de actualizaciones de finger table
@@ -134,24 +136,336 @@ class ChordNode:
         # threading.Thread(target=self.send_id_broadcast).start()
 
         self.join()
+
     def register(self, id: int, name: str, email: str, password: str) -> str:
-        if id < self.id:
-            if id >self.predecessor.id or self.first:
-                self._register(id,name,email,password)
+        print(f"register {id} {self.id}")
+        if id > self.actual_leader_id:
+            if self.first:
+                print(f"voy a registrar a { id } yo con {self.id}")
+                return self._register(id, name, email, password)
             else:
-            # Reenviar al "first"
-                first_node = self.find_first()
-                return first_node.register(id, name, email, password)
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+
+        elif id < self.id:
+            if id > self.predecessor.id or self.first:
+                return self._register(id, name, email, password)
+            else:
+                # Reenviar al "first"
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
         else:
             # Registrar localmente
-            return self._closest_preceding_node(id)
+            print("Voy a la finger table")
+            return self._closest_preceding_node(id).send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
 
     def _register(self, id: int, name: str, email: str, password: str) -> str:
-    
-        success = self.db.register_user(name, email, password)[0]
-        return ("User registered", success[1]) if success else ("Failed to register user", success[1])
-   
-#region CHORD
+
+        success = self.db.register_user(name, email, password)
+        print(success)
+        return (f"User {name} registered") if success else (f"Failed to register user {name}")
+
+    def login_user(self, id: int, name: str, password: str) -> str:
+        if id > self.actual_leader_id:
+            if self.first:
+                return self._register(id, name, email, password)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+
+        elif id < self.id:
+            if id > self.predecessor.id or self.first:
+                return self._login_user(id, name, password)
+            else:
+                # Reenviar al "first"
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(LOGIN, f"{id}|{name}|{password}")
+        else:
+            # Registrar localmente
+            print("Voy a la finger table")
+            return self._closest_preceding_node(id).send_data_tcp(LOGIN, f"{id}|{name}|{password}")
+
+    def _login_user(self, id: int, name: str, password: str) -> str:
+
+        success = self.db.login_user(name, password)
+        print(success)
+        return ("User logged", success[1]) if success else ("Failed to log user in", success[1])
+
+    def create_event(self, event_id: int, name: str, date: str, privacy: str, group_id=None) -> str:
+        if id > self.actual_leader_id:
+            if self.first:
+                return self._create_event(event_id, name, date, privacy, group_id)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(CREATE_EVENT, f'{event_id}|{name}|{date}|{privacy}|{group_id}')
+
+        elif id < self.id:
+            if id > self.predecessor.id or self.first:
+                return self._create_event(event_id, name, date, privacy, group_id)
+            else:
+                # Reenviar al "first"
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(CREATE_EVENT, f'{event_id}|{name}|{date}|{privacy}|{group_id}')
+        else:
+            # Registrar localmente
+            print("Voy a la finger table")
+            return self._closest_preceding_node(id).send_data_tcp(CREATE_EVENT, f'{event_id}|{name}|{date}|{privacy}|{group_id}')
+
+    def _create_event(self, event_id: int, name: str, date: str, privacy: str, group_id=None) -> str:
+
+        success = self.db.create_event(
+                name, date, event_id, privacy, group_id)
+        print(success)
+        return f"Event created: {name}" if success else f"Failed to create event {name}"
+
+    def create_group_event(self, event_id: int, name: str, date: str, group_id=None) -> str:
+        print(f"register {id} {self.id}")
+        if id > self.actual_leader_id:
+            if self.first:
+                print(f"voy a registrar a { id } yo con {self.id}")
+                return self._create_group_event(event_id, name, date, group_id)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(CREATE_GROUP_EVENT, f'{event_id}|{name}|{date}|{group_id}')
+
+        elif id < self.id:
+            if id > self.predecessor.id or self.first:
+                return self._create_group_event(event_id, name, date, group_id)
+            else:
+                # Reenviar al "first"
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(CREATE_GROUP_EVENT, f'{event_id}|{name}|{date}|{group_id}')
+        else:
+            # Registrar localmente
+            print("Voy a la finger table")
+            return self._closest_preceding_node(id).send_data_tcp(CREATE_GROUP_EVENT, f'{event_id}|{name}|{date}|{group_id}')
+
+    def _create_group_event(self, event_id: int, name: str, date: str, group_id=None) -> str:
+
+        success = self.db.create_group_event(
+                name, date, event_id, group_id)
+        print(success)
+        return f"Event created: {name}" if success else f"Failed to create event {name}"
+
+    def create_individual_event(self, event_id: int, name: str, date: str, group_id=None) -> str:
+        print(f"register {id} {self.id}")
+        if id > self.actual_leader_id:
+            if self.first:
+                print(f"voy a registrar a { id } yo con {self.id}")
+                return self._create_individual_event(event_id, name, date, group_id)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(CREATE_INDIVIDUAL_EVENT, f'{event_id}|{name}|{date}|{group_id}')
+
+        elif id < self.id:
+            if id > self.predecessor.id or self.first:
+                return self._create_individual_event(event_id, name, date, group_id)
+            else:
+                # Reenviar al "first"
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(CREATE_INDIVIDUAL_EVENT, f'{event_id}|{name}|{date}|{group_id}')
+        else:
+            # Registrar localmente
+            print("Voy a la finger table")
+            return self._closest_preceding_node(id).send_data_tcp(CREATE_INDIVIDUAL_EVENT, f'{event_id}|{name}|{date}|{group_id}')
+
+    def  _create_individual_event(self, event_id: int, name: str, date: str, group_id=None) -> str:
+
+        success = self.db.create_individual_event(
+                name, date, event_id, group_id)
+        return f"Event created: {name}" if success else f"Failed to create event {name}"
+
+    def register(self, id: int, name: str, email: str, password: str) -> str:
+        print(f"register {id} {self.id}")
+        if id > self.actual_leader_id:
+            if self.first:
+                print(f"voy a registrar a { id } yo con {self.id}")
+                return self._register(id, name, email, password)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+
+        elif id < self.id:
+            if id > self.predecessor.id or self.first:
+                return self._register(id, name, email, password)
+            else:
+                # Reenviar al "first"
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+        else:
+            # Registrar localmente
+            print("Voy a la finger table")
+            return self._closest_preceding_node(id).send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+
+    def _register(self, id: int, name: str, email: str, password: str) -> str:
+
+        success = self.db.register_user(name, email, password)
+        print(success)
+        return (f"User {name} registered") if success else (f"Failed to register user {name}")
+
+    def register(self, id: int, name: str, email: str, password: str) -> str:
+        print(f"register {id} {self.id}")
+        if id > self.actual_leader_id:
+            if self.first:
+                print(f"voy a registrar a { id } yo con {self.id}")
+                return self._register(id, name, email, password)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+
+        elif id < self.id:
+            if id > self.predecessor.id or self.first:
+                return self._register(id, name, email, password)
+            else:
+                # Reenviar al "first"
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+        else:
+            # Registrar localmente
+            print("Voy a la finger table")
+            return self._closest_preceding_node(id).send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+
+    def _register(self, id: int, name: str, email: str, password: str) -> str:
+
+        success = self.db.register_user(name, email, password)
+        print(success)
+        return (f"User {name} registered") if success else (f"Failed to register user {name}")
+
+    def register(self, id: int, name: str, email: str, password: str) -> str:
+        print(f"register {id} {self.id}")
+        if id > self.actual_leader_id:
+            if self.first:
+                print(f"voy a registrar a { id } yo con {self.id}")
+                return self._register(id, name, email, password)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+
+        elif id < self.id:
+            if id > self.predecessor.id or self.first:
+                return self._register(id, name, email, password)
+            else:
+                # Reenviar al "first"
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+        else:
+            # Registrar localmente
+            print("Voy a la finger table")
+            return self._closest_preceding_node(id).send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+
+    def _register(self, id: int, name: str, email: str, password: str) -> str:
+
+        success = self.db.register_user(name, email, password)
+        print(success)
+        return (f"User {name} registered") if success else (f"Failed to register user {name}")
+
+    def register(self, id: int, name: str, email: str, password: str) -> str:
+        print(f"register {id} {self.id}")
+        if id > self.actual_leader_id:
+            if self.first:
+                print(f"voy a registrar a { id } yo con {self.id}")
+                return self._register(id, name, email, password)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+
+        elif id < self.id:
+            if id > self.predecessor.id or self.first:
+                return self._register(id, name, email, password)
+            else:
+                # Reenviar al "first"
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+        else:
+            # Registrar localmente
+            print("Voy a la finger table")
+            return self._closest_preceding_node(id).send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+
+    def _register(self, id: int, name: str, email: str, password: str) -> str:
+
+        success = self.db.register_user(name, email, password)
+        print(success)
+        return (f"User {name} registered") if success else (f"Failed to register user {name}")
+
+    def register(self, id: int, name: str, email: str, password: str) -> str:
+        print(f"register {id} {self.id}")
+        if id > self.actual_leader_id:
+            if self.first:
+                print(f"voy a registrar a { id } yo con {self.id}")
+                return self._register(id, name, email, password)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+
+        elif id < self.id:
+            if id > self.predecessor.id or self.first:
+                return self._register(id, name, email, password)
+            else:
+                # Reenviar al "first"
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+        else:
+            # Registrar localmente
+            print("Voy a la finger table")
+            return self._closest_preceding_node(id).send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+
+    def _register(self, id: int, name: str, email: str, password: str) -> str:
+
+        success = self.db.register_user(name, email, password)
+        print(success)
+        return (f"User {name} registered") if success else (f"Failed to register user {name}")
+
+    def register(self, id: int, name: str, email: str, password: str) -> str:
+        print(f"register {id} {self.id}")
+        if id > self.actual_leader_id:
+            if self.first:
+                print(f"voy a registrar a { id } yo con {self.id}")
+                return self._register(id, name, email, password)
+            else:
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+
+        elif id < self.id:
+            if id > self.predecessor.id or self.first:
+                return self._register(id, name, email, password)
+            else:
+                # Reenviar al "first"
+                self.find_first()
+                time.sleep(3)
+                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+        else:
+            # Registrar localmente
+            print("Voy a la finger table")
+            return self._closest_preceding_node(id).send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+
+    def _register(self, id: int, name: str, email: str, password: str) -> str:
+
+        success = self.db.register_user(name, email, password)
+        print(success)
+        return (f"User {name} registered") if success else (f"Failed to register user {name}")
+
+# region CHORD
     def start_tcp_server(self):
         """Iniciar el servidor TCP."""
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -183,6 +497,96 @@ class ChordNode:
 
         elif option == REPLICATE:
             self.repli_db[id] = data[2]
+
+        elif option == LOGIN:
+            # Iniciar sesión
+            id = data[1]
+            email = data[2]
+            password = data[3]
+            response = self.login_user(id, email, password)
+
+        elif option == CREATE_EVENT:
+            # Crear un evento
+            event_id = int(data[1])
+            name = data[2]
+            date = data[3]
+            privacy = data[4]
+            group_id = int(data[5]) if len(data) > 5 else None
+            response = self.create_event(
+                event_id, name, date, privacy, group_id)
+        elif option == CREATE_GROUP_EVENT:
+            # Crear un evento
+            event_id = int(data[1])
+            name = data[2]
+            date = data[3]
+            group_id = int(data[4]) if len(data) > 4 else None
+            response = self.create_group_event(
+                event_id, name, date, group_id)
+        elif option == CREATE_INDIVIDUAL_EVENT:
+            # Crear un evento
+            event_id = int(data[1])
+            name = data[2]
+            date = data[3]
+            group_id = int(data[4]) if len(data) > 4 else None
+            response = self.create_individual_event(
+                event_id, name, date, group_id)
+        elif option == CONFIRM_EVENT:
+            # Confirmar un evento
+            event_id = int(data[1])
+            response = self.confirm_event(event_id)
+        elif option == CANCEL_EVENT:
+            # Cancelar un evento
+            event_id = int(data[1])
+            response = self.cancel_event(event_id)
+        elif option == LIST_EVENTS:
+            # Listar eventos de un usuario
+            user_id = int(data[1])
+            response = self.list_events(user_id)
+        elif option == LIST_EVENTS_PENDING:
+            # Listar eventos de un usuario
+            user_id = int(data[1])
+            response = self.list_events_pending(user_id)
+        elif option == ADD_CONTACT:
+            # Agregar un contacto
+            user_id = int(data[1])
+            contact_name = data[2]
+            response = self.add_contact(user_id, contact_name)
+        elif option == REMOVE_CONTACT:
+            # Eliminar un contacto
+            user_id = int(data[1])
+            contact_name = data[2]
+            response = self.remove_contact(user_id, contact_name)
+        elif option == LIST_CONTACTS:
+            # Listar contactos de un usuario
+            user_id = int(data[1])
+            response = self.list_contacts(user_id)
+        elif option == CREATE_GROUP:
+            # Crear un grupo
+            name = data[1]
+            owner_id = int(data[2])
+            response = self.create_group(owner_id, name)
+        elif option == DELETE_GROUP:
+            # Crear un grupo
+            name = data[1]
+            owner_id = int(data[2])
+            response = self.delete_group(owner_id, name)
+        elif option == LEAVE_GROUP:
+            # Crear un grupo
+            name = data[1]
+            owner_id = int(data[2])
+            response = self.leave_group(owner_id, name)
+        elif option == ADD_MEMBER:
+            # Agregar un miembro a un grupo
+            id = int(data[1])
+            group_id = int(data[2])
+            user_id = int(data[3])
+            response = self.add_member_to_group(id, group_id, user_id)
+        elif option == REMOVE_MEMBER:
+            # Agregar un miembro a un grupo
+            id = int(data[1])
+            group_id = int(data[2])
+            user_id = int(data[3])
+            response = self.remove_member_from_group(id, group_id, user_id)
 
         elif option == REGISTER:
             id = int(data[1])
@@ -297,14 +701,11 @@ class ChordNode:
             response = self.list_group_agenda(group_id)
         elif option == REQUEST_DATA:
             id = int(data[1])
-            response = self.handler_data.data(True, id)
-            
-        elif option == GET_FIRST:
-            response = data[1]
+            # response = self.handler_data.data(True, id)
 
         elif option == CHECK_PREDECESSOR:
             # !AQUI EL OBJETIVO ES OBTENE LA DATA DE MI PREDECESOR
-            response = (self.handler_data.data(False) + self.predecessor.ip)
+            response = (f"0|" + self.predecessor.ip)
 
             # si somos al menos 3 nodos, le mando a mi sucesor la data de mi predecesor
             if self.predecessor.id != self.successor.id:
@@ -352,7 +753,7 @@ class ChordNode:
             # Enviar al siguiente si todavia el valor de propagacion > 0
             if propagation > 0:
                 self.predecessor.send_data_tcp(option, f'{id}|{propagation}')
-        
+
         else:
             # Operación no reconocida
             response = "Invalid operation"
@@ -408,7 +809,7 @@ class ChordNode:
                         time.sleep(2)
                     elif self.actual_first_id == self.predecessor.id:
                         self.send_data_broadcast(
-                            UPDATE_FIRST,f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
+                            UPDATE_FIRST, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
                         time.sleep(2)
                     self.send_data_broadcast(
                         UPDATE_FINGER, f"{self.predecessor.id}|{self.ip}|{TCP_PORT}")
@@ -431,14 +832,17 @@ class ChordNode:
                             #!replicar data
                             if ip_pred_pred != self.successor.ip:
                                 if self.generate_id_(ip_pred_pred) == self.actual_first_id:
-                                    self.send_data_broadcast(UPDATE_FIRST,f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
+                                    self.send_data_broadcast(
+                                        UPDATE_FIRST, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
                                 time.sleep(2)
                                 self.send_data_broadcast(
                                     NOTIFY, f"{self.generate_id_(ip_pred_pred)}")
                             else:
                                 print(f"Solo eramos tres nodos me reinicio")
-                                self.send_data_broadcast(UPDATE_FIRST,f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
-                                self.send_data_broadcast(UPDATE_LEADER,f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
+                                self.send_data_broadcast(
+                                    UPDATE_FIRST, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
+                                self.send_data_broadcast(
+                                    UPDATE_LEADER, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
                                 self.predecessor = NodeReference(
                                     self.ip, self.tcp_port)
                                 self.successor = NodeReference(
@@ -446,8 +850,10 @@ class ChordNode:
                                 self.finger_table = self.create_finger_table()
                     else:
                         print(f"Solo eramos dos nodos me reinicio")
-                        self.send_data_broadcast(UPDATE_FIRST,f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
-                        self.send_data_broadcast(UPDATE_LEADER,f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
+                        self.send_data_broadcast(
+                            UPDATE_FIRST, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
+                        self.send_data_broadcast(
+                            UPDATE_LEADER, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
                         self.predecessor = NodeReference(
                             self.ip, self.tcp_port)
                         self.successor = NodeReference(self.ip, self.tcp_port)
@@ -500,9 +906,14 @@ class ChordNode:
                     # Recibir datos
                     datos, direccion = s.recvfrom(1024)
                     mensaje = datos.decode('utf-8')
-                    thread = threading.Thread(
-                        target=self.handle_broadcast, args=(mensaje, direccion))
-                    thread.start()
+                    if mensaje == "DISCOVER":
+                        response = f"{self.ip}:{self.tcp_port}".encode()
+                        s.sendto(response, direccion)
+                        print(f"🔹 Respondió a DISCOVER de {direccion}")
+                    else:
+                        thread = threading.Thread(
+                            target=self.handle_broadcast, args=(mensaje, direccion))
+                        thread.start()
         except Exception as e:
             print(f"[!] Error al recibir broadcast: {e}")
 
@@ -648,8 +1059,9 @@ class ChordNode:
 
         elif option == FIND_FIRST:
             if self.first == True:
-                address.send_data_tcp(GET_FIRST, f'{self.ip}')
-                 
+                print("Estoy buscando el first y ")
+                self.first_node = NodeReference(address, TCP_PORT)
+
         elif option == UPDATE_SUCC:
             id = int(data[1])
             new_ip = data[3]
@@ -695,10 +1107,10 @@ class ChordNode:
             old_id = int(data[3])
             self.actual_first_id = id
 
-            if self.id == id: 
+            if self.id == id:
                 print(f"CONFIRMADO: {id} es el nuevo first")
                 self.first = True
-            elif self.id == old_id: 
+            elif self.id == old_id:
                 print(f"CONFIRMADO: {old_id} ya no es first")
                 self.first = False
 
@@ -707,7 +1119,7 @@ class ChordNode:
             old_id = int(data[3])
             self.actual_leader_id = id
 
-            if self.id == id: 
+            if self.id == id:
                 print(f"CONFIRMADO: {id} es el nuevo lider")
                 self.leader = True
             elif self.id == old_id:
@@ -744,14 +1156,17 @@ class ChordNode:
                 # si se cayo mi sucesor, me actualizo con quien lo notifico, le pido data si tiene y le comunico que se actualice conmigo
                 if self.successor.id == id:
                     if self.actual_leader_id == id:
-                        self.send_data_broadcast(UPDATE_LEADER, f"{self.id}|{TCP_PORT}|{id}")
+                        self.send_data_broadcast(
+                            UPDATE_LEADER, f"{self.id}|{TCP_PORT}|{id}")
                         time.sleep(2)
                     #!self._request_data(succ=True)
                     self.successor = NodeReference(address, self.tcp_port)
-                    self.successor.send_data_tcp(UPDATE_PREDECESSOR, f'{self.ip}|{self.tcp_port}')
+                    self.successor.send_data_tcp(
+                        UPDATE_PREDECESSOR, f'{self.ip}|{self.tcp_port}')
                     # si el nodo que me notifico tiene menor id que yo, que actualicen al nodo caido conmigo, pues soy el nuevo lider
                     # en caso contrario, que actualicen con el nodo notificante
-                    self.send_data_broadcast(UPDATE_FINGER, f"{id}|{address}|{TCP_PORT}")
+                    self.send_data_broadcast(
+                        UPDATE_FINGER, f"{id}|{address}|{TCP_PORT}")
 
         elif option == BROADCAST_ID:
             real_ip = data[2]
@@ -852,9 +1267,12 @@ class ChordNode:
                     self.finger_table[finger_id] = node
 
     def print_finger_table(self):
-        print(f" Nodo: {self.id} FINGER TABLE. FIRST: {self.first}. LEADER: {self.leader}")
-        print(f"PREDECESOR: {self.predecessor.id} YO: {self.id} SUCCESOR: {self.successor.id}")
-        print(f"ACTUAL FIRST: {self.actual_first_id} | ACTUAL LEADER: {self.actual_leader_id}")
+        print(
+            f" Nodo: {self.id} FINGER TABLE. FIRST: {self.first}. LEADER: {self.leader}")
+        print(
+            f"PREDECESOR: {self.predecessor.id} YO: {self.id} SUCCESOR: {self.successor.id}")
+        print(
+            f"ACTUAL FIRST: {self.actual_first_id} | ACTUAL LEADER: {self.actual_leader_id}")
         for i in range(8):
             finger_id = (self.id + 2**i) % 256
             print(
@@ -866,27 +1284,26 @@ class ChordNode:
         """Devuelve el nodo más cercano a un ID en la finger table."""
         for i in range(8):
             if (self.id + (2**i) % 256) > id:
-                if self.finger_table[self.id + (2**(i-1)) % 256]>= id:
+                if self.finger_table[self.id + (2**(i-1)) % 256] >= id:
                     return self.finger_table[self.id + (2**(i-1)) % 256]
-                else: 
+                else:
                     return self.finger_table[self.id + (2**(i)) % 256]
         return self.finger_table[self.id + (2**(i)) % 256]
+
     def find_first(self) -> bytes:
         """Buscar el primer nodo."""
-        data = self.send_data_broadcast(FIND_FIRST, f'0|0').decode()
-        response = NodeReference(data, self.tcp_port)
-        return response
+        self.send_data_broadcast(FIND_FIRST, f'0|0')
 
     def request_succ_data(self, succ=False, pred=False):
         """Preguntar a mi sucesor por data."""
         if self.successor.id != self.id:
             if succ:
                 response_succ = self.successor.request_data(self.id).decode()
-                self.handler_data.create(response_succ)
+                # self.handler_data.create(response_succ)
 
         if pred:
             response_pred = self.predecessor.request_data(self.id).decode()
-            self.handler_data.create(response_pred)
+            # self.handler_data.create(response_pred)
 
     def set_first(self, id, port, old_id, old_port):
         print(f"{id} es el nuevo first y {old_id} ya no es first")
@@ -1052,8 +1469,8 @@ class ChordNode:
         for id, ip in resultado:
             succ = NodeReference(ip, self.tcp_port)
             succ.send_data_tcp(REPLICATE, f"{self.id}|{self.db}")
-#endregion
+# endregion
+
 
 if __name__ == "__main__":
     server = ChordNode()
-

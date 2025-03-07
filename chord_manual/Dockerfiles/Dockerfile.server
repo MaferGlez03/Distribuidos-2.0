@@ -1,0 +1,10 @@
+FROM python:3.10
+WORKDIR /app
+COPY chord.py /app
+COPY flexible_queue.py /app
+COPY handle_data.py /app
+COPY storage.py /app
+COPY requirements.txt /app
+RUN pip install -r requirements.txt
+EXPOSE 8000 8888
+CMD ["python", "chord.py"]

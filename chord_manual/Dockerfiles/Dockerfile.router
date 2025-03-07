@@ -1,0 +1,11 @@
+FROM ubuntu:latest
+
+RUN apt update && apt install -y iproute2 iptables python3
+
+WORKDIR /app
+COPY scripts/router.sh /app/router.sh
+COPY broadcast_proxy.py /app/broadcast_proxy.py
+
+RUN chmod +x /app/router.sh
+
+CMD ["bash", "-c", "/app/router.sh && python3 /app/broadcast_proxy.py"]
