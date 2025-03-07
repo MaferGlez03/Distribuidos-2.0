@@ -183,7 +183,8 @@ class ChordNode:
             return
 
         elif option == REPLICATE:
-            self.repli_db[id] = data[2]
+            real_data = conn.recv(1024).decode().split('$$')
+            self.handler_data.create(real_data[1])
 
         elif option == REGISTER:
             id = int(data[1])
@@ -361,6 +362,11 @@ class ChordNode:
             response = st1[:-1]
         
         elif option == UPDATE_SUCC_LIST:
+            # Para cuando se cae un nodo
+            print(f"DATA$: {data}")
+            if data[1] == '$':
+                self.get_succ_list()
+            # Para cuando se sigue a partir de un sucesor
             self.get_succ_list(data[1:])
 
         else:
@@ -417,11 +423,9 @@ class ChordNode:
                             UPDATE_LEADER, f"{self.generate_id_(ip_pred_pred)}|{TCP_PORT}|{self.predecessor.id}")
                         time.sleep(2)
                     elif self.actual_first_id == self.predecessor.id:
-                        self.send_data_broadcast(
-                            UPDATE_FIRST,f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
+                        self.send_data_broadcast(UPDATE_FIRST,f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
                         time.sleep(2)
-                    self.send_data_broadcast(
-                        UPDATE_FINGER, f"{self.predecessor.id}|{self.ip}|{TCP_PORT}")
+                    self.send_data_broadcast(UPDATE_FINGER, f"{self.predecessor.id}|{self.ip}|{TCP_PORT}")
                     if self.predecessor.id != self.successor.id:  # somos al menos 3
                         try:
                             # tratamos de conectarnos con el predecesor de nuestro predecesor para comunicarle que se cayo su sucesor
@@ -429,11 +433,12 @@ class ChordNode:
                             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                                 s.connect((ip_pred_pred, TCP_PORT))
                                 s.settimeout(10)
-                                s.sendall(
-                                    f'{FALL_SUCC}|{self.ip}|{self.tcp_port}'.encode('utf-8'))
+                                s.sendall(f'{FALL_SUCC}|{self.ip}|{self.tcp_port}'.encode('utf-8'))
                                 s.recv(1024).decode()
                                 print(self.predecessor.id)
                                 print(self.successor.id)
+                            # Iniciar actualizaciones de listas de sucesores a partir del predecesor del predecesor
+                            NodeReference(ip_pred_pred, self.tcp_port).send_data_tcp(UPDATE_SUCC_LIST, f'$')
 
                         except:
                             print(
@@ -445,6 +450,13 @@ class ChordNode:
                                 time.sleep(2)
                                 self.send_data_broadcast(
                                     NOTIFY, f"{self.generate_id_(ip_pred_pred)}")
+                                # Esperar hasta que se actualice el nuevo predecesor
+                                time.sleep(10)
+                                # Iniciar actualizaciones de listas de sucesores
+                                if self.predecessor.id == self.successor.id:
+                                    # Solo quedaron dos nodos
+                                    self.succ_list = [NodeReference(self.successor.ip, self.successor.port), NodeReference(self.ip, self.tcp_port), NodeReference(self.predecessor.ip, self.predecessor.port)]
+                                self.predecessor.send_data_tcp(UPDATE_SUCC_LIST, f'$')
                             else:
                                 print(f"Solo eramos tres nodos me reinicio")
                                 self.send_data_broadcast(UPDATE_FIRST,f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
@@ -454,6 +466,8 @@ class ChordNode:
                                 self.successor = NodeReference(
                                     self.ip, self.tcp_port)
                                 self.finger_table = self.create_finger_table()
+                                self.succ_list = [NodeReference(self.ip, self.tcp_port) for _ in range(PROPAGATION)]
+
                     else:
                         print(f"Solo eramos dos nodos me reinicio")
                         self.send_data_broadcast(UPDATE_FIRST,f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
@@ -462,6 +476,9 @@ class ChordNode:
                             self.ip, self.tcp_port)
                         self.successor = NodeReference(self.ip, self.tcp_port)
                         self.finger_table = self.create_finger_table()
+                        self.succ_list = [NodeReference(self.ip, self.tcp_port) for _ in range(PROPAGATION)]
+                
+                print(f"LISTA DE SUCESORES: {[element.id for element in self.succ_list]}")
                 time.sleep(5)
 
     def send_data_broadcast(self, op, data):
@@ -1043,19 +1060,9 @@ class ChordNode:
             f"PRED: {self.predecessor.id} | YO: {self.id} | SUCC: {self.successor.id}")
 
     def replicate(self):
-        element = (self.id, self.ip)
-        k = PROPAGATION
-        list = self.nodes
-        indice = list.index(element)
-
-        resultado = []
-        for i in range(1, k + 1):
-            indice_circular = (indice + i) % len(list)
-            resultado.append(list[indice_circular])
-
-        for id, ip in resultado:
-            succ = NodeReference(ip, self.tcp_port)
-            succ.send_data_tcp(REPLICATE, f"{self.id}|{self.db}")
+        data = self.handler_data.data(False, self.id)
+        for element in self.succ_list:
+            element.send_data_tcp(REPLICATE, f'$${data}')
     
     def get_succ_list(self, succ_list=None):
         if succ_list is None:
