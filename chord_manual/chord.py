@@ -34,6 +34,7 @@ UPDATE_LEADER = 'upd_leader'
 UPDATE_FIRST = 'upd_first'
 UPDATE_FIRST_TOTAL = 'upd_first_total'
 UPDATE_LEADER_TOTAL = 'upd_leader_total'
+UPDATE_REPLI_LIST = 'upd_rep_list'
 DATA_PRED = 'dat_prd'
 FALL_SUCC = 'fal_suc'
 LIST_SUCC = 'list_succ'
@@ -113,8 +114,8 @@ class ChordNode:
         self.finger_table = self.create_finger_table()
         self.leader = False
         self.first = False
-        self.repli_pred = ''
-        self.repli_pred_pred = ''
+        self.repli_pred_list = [] # Lista de nodos caidos que son mi responsabilidad
+        self.repli_pred_pred_list = ''
         self.actual_first_id = self.id
         self.actual_leader_id = self.id
         self.first_node = NodeReference(self.ip, self.tcp_port)
@@ -498,7 +499,8 @@ class ChordNode:
 
         elif option == REPLICATE:
             real_data = conn.recv(1024).decode().split('$$')
-            self.handler_data.create(real_data[1])
+            for datas in real_data[1:]:
+                self.handler_data.create(datas)
 
         elif option == LOGIN:
             # Iniciar sesión
@@ -711,12 +713,12 @@ class ChordNode:
 
             # si somos al menos 3 nodos, le mando a mi sucesor la data de mi predecesor
             if self.predecessor.id != self.successor.id:
-                self.successor.send_data_tcp(DATA_PRED, self.repli_pred)
+                self.successor.send_data_tcp(DATA_PRED, self.repli_pred_list)
 
         elif option == DATA_PRED:
             data_ = data[1]
             # !AQUI TAL VEZ HAY Q CAMBIAR LA LOGICA POR LA FORMA DE REPLICAR
-            self.repli_pred_pred = data_
+            self.repli_pred_pred_list = data_
 
         elif option == FALL_SUCC:
             print("FALL SUCC FALL SUCC FALL SUCC FALL SUCC FALL SUCC")
@@ -770,6 +772,11 @@ class ChordNode:
             # Para cuando se sigue a partir de un sucesor
             self.get_succ_list(data[1:])
 
+        elif option == UPDATE_REPLI_LIST:
+            print(f'REPLICANDO {id} EN {self.id}')
+            self.repli_pred_list.append(id)
+            return f'ok'
+
         else:
             # Operación no reconocida
             response = "Invalid operation"
@@ -816,12 +823,11 @@ class ChordNode:
                         ip_pred_pred = self.pred_repli.split('|')[-1]
 
                 except:
-                    print(
-                        f"El servidor {self.predecessor.ip} se ha desconectado")
+                    print(f"El servidor {self.predecessor.ip} se ha desconectado")
+                    self.update_repli_list(self.predecessor.id)
                     #!Replicar en la bd la info del predecesor
                     if self.first:
-                        self.send_data_broadcast(
-                            UPDATE_LEADER, f"{self.generate_id_(ip_pred_pred)}|{TCP_PORT}|{self.predecessor.id}")
+                        self.send_data_broadcast(UPDATE_LEADER, f"{self.generate_id_(ip_pred_pred)}|{TCP_PORT}|{self.predecessor.id}")
                         time.sleep(2)
                     elif self.actual_first_id == self.predecessor.id:
                         self.send_data_broadcast(UPDATE_FIRST,f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
@@ -840,10 +846,10 @@ class ChordNode:
                                 print(self.successor.id)
                             # Iniciar actualizaciones de listas de sucesores a partir del predecesor del predecesor
                             NodeReference(ip_pred_pred, self.tcp_port).send_data_tcp(UPDATE_SUCC_LIST, f'$')
-
+                            self.update_repli_list(self.predecessor.id)
                         except:
-                            print(
-                                f"El servidor {ip_pred_pred} se ha desconectado tambien")
+                            print(f"El servidor {ip_pred_pred} se ha desconectado tambien")
+                            self.update_repli_list(self.generate_id(ip_pred_pred))
                             #!replicar data
                             if ip_pred_pred != self.successor.ip:
                                 if self.generate_id_(ip_pred_pred) == self.actual_first_id:
@@ -885,6 +891,7 @@ class ChordNode:
                         self.succ_list = [NodeReference(self.ip, self.tcp_port) for _ in range(PROPAGATION)]
                 
                 print(f"LISTA DE SUCESORES: {[element.id for element in self.succ_list]}")
+                self.replicate()
                 time.sleep(5)
 
     def send_data_broadcast(self, op, data):
@@ -1216,6 +1223,7 @@ class ChordNode:
         print(f"predecesor: {self.predecessor.id} yo : {self.id} sucesor: {self.successor.id}")
 
         self.get_succ_list()
+        self.replicate()
 
     def create_finger_table(self):
         table = {}
@@ -1474,9 +1482,19 @@ class ChordNode:
             f"PRED: {self.predecessor.id} | YO: {self.id} | SUCC: {self.successor.id}")
 
     def replicate(self):
-        data = self.handler_data.data(False, self.id)
+        # Replico mi data en mis sucesores
+        data = f'$${self.handler_data.data(False, self.id)}'
         for element in self.succ_list:
-            element.send_data_tcp(REPLICATE, f'$${data}')
+            for id in self.repli_pred_list:
+            # Replico la data de los nodos caidos que son mi responsabilidad en mis sucesores
+                data += f'$${self.handler_data.data(False, id)}'
+            element.send_data_tcp(REPLICATE, f'{data}')
+
+    def update_repli_list(self, id):
+        print(f'REPLICANDO {id} EN {self.id}')
+        self.repli_pred_list.append(id)
+        for element in self.succ_list[:-1]:
+            element.send_data_tcp(UPDATE_REPLI_LIST, id)
     
     def get_succ_list(self, succ_list=None):
         if succ_list is None:
