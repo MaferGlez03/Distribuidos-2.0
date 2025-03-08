@@ -28,7 +28,9 @@ def connect_to_server(server_ip, server_port, operation, data):
     """Conecta al servidor Chord con SSL y envía una solicitud."""
     try:
         context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-        context.load_verify_locations("ssl/certificate.pem")  # Cargar certificado
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+        # context.load_verify_locations("ssl/certificate.pem")  # Cargar certificado
 
         with socket.create_connection((server_ip, int(server_port))) as sock:
             with context.wrap_socket(sock, server_hostname=server_ip) as secure_sock:

@@ -168,7 +168,7 @@ class HandleData:
         # Reiniciar la lista de garbage
         self._garbage = []
 
-    def set_id(data: str) -> int:
+    def set_id(self, data: str) -> int:
         """
         Hashea una cadena usando SHA-1 y devuelve un entero.
         """

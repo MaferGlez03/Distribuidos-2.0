@@ -121,8 +121,8 @@ class ChordNode:
         self.finger_table = self.create_finger_table()
         self.leader = False
         self.first = False
-        self.repli_pred_list = [] # Lista de nodos caidos que son mi responsabilidad
-        self.repli_pred_pred_list = ''
+        self.repli_pred = '' # Lista de nodos caidos que son mi responsabilidad
+        self.repli_pred_pred = ''
         self.actual_first_id = self.id
         self.actual_leader_id = self.id
         self.first_node = NodeReference(self.ip, self.tcp_port)
@@ -134,10 +134,6 @@ class ChordNode:
         self.finger_update_fall_queue = queue.Queue()
 
         self.db = Database()
-        self.repli_db = {}
-        self.fall_db = {}
-        self.succ_list = [NodeReference(self.ip, self.tcp_port) for _ in range(PROPAGATION)]
-        self.pred_list = [NodeReference(self.ip, self.tcp_port) for _ in range(PROPAGATION)]
 
         threading.Thread(target=self.start_tcp_server).start()
         threading.Thread(target=self.start_broadcast).start()
@@ -964,7 +960,7 @@ class ChordNode:
             response = self.list_group_agenda(group_id)
         elif option == REQUEST_DATA:
             id = int(data[1])
-            # response = self.handler_data.data(True, id)
+            response = self.handler_data.data(False, id)
 
         elif option == CHECK_PREDECESSOR:
             # !AQUI EL OBJETIVO ES OBTENE LA DATA DE MI PREDECESOR
@@ -1488,21 +1484,16 @@ class ChordNode:
     def join(self):
         op = JOIN
         data = f'{self.ip}|{self.tcp_port}'
-        print(f"1predecesor: {self.predecessor.id} yo : {self.id} sucesor: {self.successor.id}")
         self.send_data_broadcast(op, data)
         time.sleep(5)
-        print(f"2predecesor: {self.predecessor.id} yo : {self.id} sucesor: {self.successor.id}")
         self.request_first()
         self.request_leader()
         time.sleep(5)
-        print(f"3predecesor: {self.predecessor.id} yo : {self.id} sucesor: {self.successor.id}")
         self.send_data_broadcast(FIX_FINGER, f'0|0')
-        print(f"4predecesor: {self.predecessor.id} yo : {self.id} sucesor: {self.successor.id}")
+        data = self.successor.send_data_tcp(REQUEST_DATA, self.id)
+        self.handler_data.create(data)
+        self.handler_data.data(True, self.predecessor.id)
 
-
-        threading.Thread(target=self.get_succ_list).start()
-        threading.Thread(target=self.get_pred_list).start()
-        # threading.Thread(target=self.replicate).start()
 
     def create_finger_table(self):
         table = {}
@@ -1599,17 +1590,6 @@ class ChordNode:
         """Buscar el primer nodo."""
         self.send_data_broadcast(FIND_FIRST, f'0|0')
 
-    def request_succ_data(self, succ=False, pred=False):
-        """Preguntar a mi sucesor por data."""
-        if self.successor.id != self.id:
-            if succ:
-                response_succ = self.successor.request_data(self.id).decode()
-                # self.handler_data.create(response_succ)
-
-        if pred:
-            response_pred = self.predecessor.request_data(self.id).decode()
-            # self.handler_data.create(response_pred)
-
     def set_first(self, id, port, old_id, old_port):
         print(f"{id} es el nuevo first y {old_id} ya no es first")
         op = UPDATE_FIRST
@@ -1676,12 +1656,6 @@ class ChordNode:
         # Obtener mi IP
         node_info = f"{ip}"
         return int(hashlib.sha1(node_info.encode()).hexdigest(), 16) % (2 ** 8)
-
-    def send_data_propagation(self):
-        self.predecessor.send_data_tcp(
-            PRED_PROPAGATION, f'{self.id}|{PROPAGATION}')
-        self.successor.send_data_tcp(
-            SUCC_PROPAGATION, f'{self.id}|{PROPAGATION}')
 
     def init_queue(self):
         q = FlexibleQueue()
