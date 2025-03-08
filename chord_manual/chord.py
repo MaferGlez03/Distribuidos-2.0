@@ -166,7 +166,7 @@ class ChordNode:
             # Registrar localmente
             print("Voy a la finger table")
             return self._closest_preceding_node(id).send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
-
+#region DB
     def _register(self, id: int, name: str, email: str, password: str) -> str:
 
         success = self.db.register_user(name, email, password)
@@ -718,7 +718,7 @@ class ChordNode:
     def _list_group_agenda(self, group_id: int) -> str:
         agenda = self.db.list_group_agenda(group_id)
         return "\n".join(agenda)
-
+#endregion
 # region CHORD
     def start_tcp_server(self):
         """Iniciar el servidor TCP con SSL."""
@@ -964,16 +964,16 @@ class ChordNode:
 
         elif option == CHECK_PREDECESSOR:
             # !AQUI EL OBJETIVO ES OBTENE LA DATA DE MI PREDECESOR
-            response = (f"0|" + self.predecessor.ip)
+            response = (self.handler_data.data(False) + self.predecessor.ip)
 
             # si somos al menos 3 nodos, le mando a mi sucesor la data de mi predecesor
-            # if self.predecessor.id != self.successor.id:
-            #     self.successor.send_data_tcp(DATA_PRED, self.repli_pred_list)
+            if self.predecessor.id != self.successor.id:
+               self.successor.send_data_tcp(DATA_PRED, self.repli_pred)
 
         elif option == DATA_PRED:
             data_ = data[1]
             # !AQUI TAL VEZ HAY Q CAMBIAR LA LOGICA POR LA FORMA DE REPLICAR
-            self.repli_pred_pred_list = data_
+            self.repli_pred_pred = data_
 
         elif option == FALL_SUCC:
             print("FALL SUCC FALL SUCC FALL SUCC FALL SUCC FALL SUCC")
@@ -1098,13 +1098,16 @@ class ChordNode:
                 except:
                     print(f"El servidor {self.predecessor.ip} se ha desconectado")
                     # self.update_repli_list(self.predecessor.id)
-                    #!Replicar en la bd la info del predecesor
+                    #replicar la info del predecesor que se cayó
+                    self.handler_data.create(self.repli_pred)
+                    #actualizar el first y el leader
                     if self.first:
                         self.send_data_broadcast(UPDATE_LEADER, f"{self.generate_id_(ip_pred_pred)}|{TCP_PORT}|{self.predecessor.id}")
                         time.sleep(2)
                     elif self.actual_first_id == self.predecessor.id:
                         self.send_data_broadcast(UPDATE_FIRST,f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
                         time.sleep(2)
+                    #actualizar la finger table
                     self.send_data_broadcast(UPDATE_FINGER, f"{self.predecessor.id}|{self.ip}|{TCP_PORT}")
                     if self.predecessor.id != self.successor.id:  # somos al menos 3
                         try:
@@ -1120,18 +1123,19 @@ class ChordNode:
                                     secure_sock.settimeout(10)  # Configurar timeout
                                     secure_sock.sendall(f'{FALL_SUCC}|{self.ip}|{self.tcp_port}'.encode('utf-8'))
                                     secure_sock.recv(1024).decode()  # Esperar respuesta
-                                print(self.predecessor.id)
-                                print(self.successor.id)
+                                # print(self.predecessor.id)
+                                # print(self.successor.id)
                             # Iniciar actualizaciones de listas de sucesores a partir del predecesor del predecesor
-                            time.sleep(5)
-                            threading.Thread(target=NodeReference(ip_pred_pred, self.tcp_port).send_data_tcp, args=(UPDATE_SUCC_LIST, f'$')).start()
-                            time.sleep(5)
-                            threading.Thread(target=NodeReference(self.ip, self.tcp_port).send_data_tcp, args=(UPDATE_PRED_LIST, f'$')).start()
+                            #time.sleep(5)
+                            #threading.Thread(target=NodeReference(ip_pred_pred, self.tcp_port).send_data_tcp, args=(UPDATE_SUCC_LIST, f'$')).start()
+                            #time.sleep(5)
+                            #threading.Thread(target=NodeReference(self.ip, self.tcp_port).send_data_tcp, args=(UPDATE_PRED_LIST, f'$')).start()
                             # self.update_repli_list(self.predecessor.id)
                         except:
                             print(f"El servidor {ip_pred_pred} se ha desconectado tambien")
                             # self.update_repli_list(self.generate_id(ip_pred_pred))
-                            #!replicar data
+                            #replicar data
+                            self.handler_data.create(self.repli_pred_pred)
                             if ip_pred_pred != self.successor.ip:
                                 if self.generate_id_(ip_pred_pred) == self.actual_first_id:
                                     self.send_data_broadcast(
