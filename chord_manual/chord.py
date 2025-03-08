@@ -1092,9 +1092,9 @@ class ChordNode:
                             # Chequeamos que no se ha caído el predecesor
                             secure_sock.sendall(f'{op}|{data}'.encode('utf-8'))
                             # Guardamos la info recibida
-                            self.pred_repli = secure_sock.recv(1024).decode()
+                            self.repli_pred = secure_sock.recv(1024).decode()
                             # Guardamos el id del predecesor de nuestro predecesor
-                            ip_pred_pred = self.pred_repli.split('|')[-1]
+                            ip_pred_pred = self.repli_pred.split('|')[-1]
                 except:
                     print(f"El servidor {self.predecessor.ip} se ha desconectado")
                     # self.update_repli_list(self.predecessor.id)
