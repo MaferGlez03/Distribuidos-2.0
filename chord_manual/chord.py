@@ -486,28 +486,28 @@ class ChordNode:
             local_response = self._closest_preceding_node(id).send_data_tcp(CREATE_GROUP, f"{id}|{owner_id}|{name}")
             return local_response.decode()
 
-    def delete_group(self, id: int, owner_id: int, name: str) -> str:
+    def delete_group(self, id: int, owner_id: int) -> str:
         print(f"delete_group {id} {self.id}")
         if id > self.actual_leader_id:
             if self.first:
-                print(f"voy a eliminar grupo {name} yo con {self.id}")
-                return self._delete_group(owner_id, name)
+                print(f"voy a eliminar grupo {owner_id} yo con {self.id}")
+                return self._delete_group(owner_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                local_response = self.first_node.send_data_tcp(DELETE_GROUP, f"{id}|{owner_id}|{name}")
+                local_response = self.first_node.send_data_tcp(DELETE_GROUP, f"{id}|{owner_id}")
                 return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
-                return self._delete_group(owner_id, name)
+                return self._delete_group(owner_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                local_response = self.first_node.send_data_tcp(DELETE_GROUP, f"{id}|{owner_id}|{name}")
+                local_response = self.first_node.send_data_tcp(DELETE_GROUP, f"{id}|{owner_id}")
                 return local_response.decode()
         else:
             print("Voy a la finger table")
-            local_response = self._closest_preceding_node(id).send_data_tcp(DELETE_GROUP, f"{id}|{owner_id}|{name}")
+            local_response = self._closest_preceding_node(id).send_data_tcp(DELETE_GROUP, f"{id}|{owner_id}")
             return local_response.decode()
 
     def leave_group(self, id: int, name: str, owner_id: int) -> str:
@@ -559,29 +559,29 @@ class ChordNode:
             local_response = self._closest_preceding_node(id).send_data_tcp(ADD_MEMBER, f"{id}|{group_id}|{user_id}|{role}")
             return local_response.decode()
 
-    def remove_member_from_group(self, id: int, group_id: int, user_id: int) -> str:
+    def remove_member_from_group(self, id: int, group_id: int, user_id: int,user) -> str:
         print(f"remove_member_from_group {id} {self.id}")
         if id > self.actual_leader_id:
             if self.first:
                 print(
                     f"voy a eliminar miembro {user_id} del grupo {group_id} yo con {self.id}")
-                return self._remove_member_from_group(group_id, user_id)
+                return self._remove_member_from_group(group_id, user_id,user)
             else:
                 self.find_first()
                 time.sleep(3)
-                local_response = self.first_node.send_data_tcp(REMOVE_MEMBER, f"{id}|{group_id}|{user_id}")
+                local_response = self.first_node.send_data_tcp(REMOVE_MEMBER, f"{id}|{group_id}|{user_id}|{user}")
                 return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
-                return self._remove_member_from_group(group_id, user_id)
+                return self._remove_member_from_group(group_id, user_id,user)
             else:
                 self.find_first()
                 time.sleep(3)
-                local_response = self.first_node.send_data_tcp(REMOVE_MEMBER, f"{id}|{group_id}|{user_id}")
+                local_response = self.first_node.send_data_tcp(REMOVE_MEMBER, f"{id}|{group_id}|{user_id}|{user}")
                 return local_response.decode()
         else:
             print("Voy a la finger table")
-            local_response = self._closest_preceding_node(id).send_data_tcp(REMOVE_MEMBER, f"{id}|{group_id}|{user_id}")
+            local_response = self._closest_preceding_node(id).send_data_tcp(REMOVE_MEMBER, f"{id}|{group_id}|{user_id}|{user}")
             return local_response.decode()
 
     def list_group(self, id: int, user_id: int) -> str:
@@ -718,8 +718,8 @@ class ChordNode:
         success = self.db.create_group(name, owner_id)
         return "Group created" if success else "Failed to create group"
 
-    def _delete_group(self, owner_id: int, name: str) -> str:
-        success = self.db.delete_group(name)
+    def _delete_group(self, id:int) -> str:
+        success = self.db.delete_group(id)
         return "Group deleted" if success else "Failed to delete group"
 
     def _leave_group(self, owner_id: int, name: str) -> str:
@@ -730,12 +730,14 @@ class ChordNode:
         success = self.db.add_member_to_group(group_id, user_id, role)
         return "Member added" if success else "Failed to add member"
 
-    def _remove_member_from_group(self, group_id: int, user_id: int) -> str:
-        success = self.db.remove_member_from_group(group_id, user_id)
+    def _remove_member_from_group(self, group_id: int, user_id: int, user:str) -> str:
+        admin = self.db.getUserID(user)
+        success = self.db.remove_member_from_group(group_id, user_id, admin)
         return "Member removed" if success else "Failed to remove member"
 
     def _list_group(self, user_id: int) -> str:
-        agenda = self.db.list_groups(user_id)
+        real_id = self.db.getUserID(user_id)
+        agenda = self.db.list_groups(real_id)
         groups_list = [{'id': g[0], 'name': g[1]} for g in agenda]
         return "\n".join(groups_list)
 
@@ -877,14 +879,15 @@ class ChordNode:
             response = self.list_contacts(user_id)
         elif option == CREATE_GROUP:
             # Crear un grupo
-            name = data[1]
-            owner_id = int(data[2])
-            response = self.create_group(owner_id, name)
+            id = int(data[1])
+            name = data[2]
+            user_name = data[3]
+            response = self.create_group(id,owner_id, name)
         elif option == DELETE_GROUP:
             # Crear un grupo
-            name = data[1]
-            owner_id = int(data[2])
-            response = self.delete_group(owner_id, name)
+            id = int(data[1])
+            group_id = int(data[2])
+            response = self.delete_group(id,group_id)
         elif option == LEAVE_GROUP:
             # Crear un grupo
             name = data[1]
@@ -895,13 +898,15 @@ class ChordNode:
             id = int(data[1])
             group_id = int(data[2])
             user_id = int(data[3])
-            response = self.add_member_to_group(id, group_id, user_id)
+            role = data[4]
+            response = self.add_member_to_group(id, group_id, user_id,role)
         elif option == REMOVE_MEMBER:
             # Agregar un miembro a un grupo
             id = int(data[1])
             group_id = int(data[2])
             user_id = int(data[3])
-            response = self.remove_member_from_group(id, group_id, user_id)
+            user = data[4]
+            response = self.remove_member_from_group(id, group_id, user_id,user)
 
         elif option == REGISTER:
             id = int(data[1])
@@ -913,8 +918,9 @@ class ChordNode:
         
         elif option == LIST_GROUPS:
             # Listar grupos de un usuario
-            user_id = int(data[1])
-            response = self.list_group(user_id)
+            id = int(data[1])
+            user = int(data[2])
+            response = self.list_group(id,user)
         elif option == LIST_MEMBER:
             # Listar grupos de un usuario
             user_id = int(data[2])

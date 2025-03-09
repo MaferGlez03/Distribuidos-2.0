@@ -22,6 +22,7 @@ UDP_PORT = 8888
 
 # Variable global para almacenar el ID del usuario registrado
 chord_id = None
+username=None
 
 def find_active_server(start_ip, end_ip, port, timeout=1):
     """
@@ -68,6 +69,7 @@ def unregister_user():
     if chord_id is not None:
         print(f"🔹 Usuario con ID {chord_id} desregistrado.")
         chord_id = None
+        username=None
     else:
         print("🔹 No hay ningún usuario registrado.")
 
@@ -121,7 +123,7 @@ if __name__ == "__main__":
             print(f"user_id: {user_id}")
             response = connect_to_server(server_ip, 8000, "reg", f"{user_id}|{name}|{email}|{password}")
             if "éxito" in response.lower():  # Suponiendo que el servidor devuelve "éxito" en caso de registro exitoso
-                chord_id = user_id  # Actualizar chord_id con el ID del usuario registrado
+                chord_id = user_id# Actualizar chord_id con el ID del usuario registrado
             print(f"🔹 Respuesta del servidor: {response}")
 
         elif opcion == "2":
@@ -186,13 +188,13 @@ if __name__ == "__main__":
             elif opcion == "11":
                 print("\n🔹 Crear Grupo:")
                 group_name = input("Ingrese el nombre del grupo: ")
-                response = connect_to_server(server_ip, 8000, "create_group", f"{chord_id}|{group_name}")
+                response = connect_to_server(server_ip, 8000, "create_group", f"{chord_id}|{group_name}|{username}")
                 print(f"🔹 Respuesta del servidor: {response}")
 
             elif opcion == "12":
                 print("\n🔹 Eliminar Grupo:")
-                group_name = input("Ingrese el nombre del grupo: ")
-                response = connect_to_server(server_ip, 8000, "delete_group", f"{chord_id}|{group_name}")
+                group_id = input("Ingrese el id del grupo: ")
+                response = connect_to_server(server_ip, 8000, "delete_group", f"{chord_id}|{group_id}")
                 print(f"🔹 Respuesta del servidor: {response}")
 
             elif opcion == "13":
@@ -213,12 +215,12 @@ if __name__ == "__main__":
                 print("\n🔹 Eliminar Miembro de Grupo:")
                 group_id = input("Ingrese el ID del grupo: ")
                 member_id = input("Ingrese el ID del miembro a eliminar: ")
-                response = connect_to_server(server_ip, 8000, "remove_member_from_group", f"{chord_id}|{group_id}|{member_id}")
+                response = connect_to_server(server_ip, 8000, "remove_member_from_group", f"{chord_id}|{group_id}|{member_id}|{username}")
                 print(f"🔹 Respuesta del servidor: {response}")
 
             elif opcion == "16":
                 print("\n🔹 Listar Grupos:")
-                response = connect_to_server(server_ip, 8000, "list_group", chord_id)
+                response = connect_to_server(server_ip, 8000, "list_group", f"{chord_id}|{username}")
                 print(f"🔹 Respuesta del servidor: {response}")
 
             elif opcion == "17":
