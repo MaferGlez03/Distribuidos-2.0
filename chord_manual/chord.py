@@ -95,17 +95,34 @@ class NodeReference:
 
     def send_data_tcp(self, op, data):
         try:
-            context = ssl.create_default_context(ssl.PROTOCOL_TLS_SERVER)
-            context.check_hostname = False  # Desactivar verificación del hostname
-            context.verify_mode = ssl.CERT_NONE
+            # ✅ Crear socket base (TCP)
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as raw_sock:
+                raw_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-            with socket.create_connection((self.ip, self.port)) as s:
-                with context.wrap_socket(s, server_side=True) as secure_sock:
-                    secure_sock.sendall(f'{op}|{data}'.encode('utf-8'))
-                    return secure_sock.recv(1024)  # Recibir respuesta
+                # ✅ Conectar al destino
+                raw_sock.connect((self.ip, self.port))
+
+                # ✅ Crear contexto SSL para cliente
+                context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+                context.check_hostname = False
+                context.verify_mode = ssl.CERT_NONE
+
+                # ✅ Envolver la conexión con SSL
+                with context.wrap_socket(raw_sock, server_hostname="MFSG") as ssl_sock:
+                    print(f"🔒 Conexión SSL establecida con {self.ip}:{self.port}")
+
+                    # ✅ Enviar datos
+                    ssl_sock.sendall(f'{op}|{data}'.encode('utf-8'))
+                    print(f"📤 Datos enviados: {op}|{data}")
+
+                    # ✅ Recibir respuesta
+                    response = ssl_sock.recv(1024)
+                    print(f"📥 Respuesta recibida: {response.decode('utf-8')}")
+                    return response
+
         except Exception as e:
             print(f"❌ Error en send_data_tcp: {e}")
-            return False
+            return b''
 
 
 class ChordNode:
@@ -1087,11 +1104,11 @@ class ChordNode:
                     print("Voy a tratar de conectar")
                     with socket.create_connection((self.predecessor.ip, self.predecessor.port)) as s:
                         # Configurar SSL para la conexión con el predecesor
-                        context = ssl.create_default_context(ssl.PROTOCOL_TLS_SERVER)
+                        context = ssl.create_default_context(ssl.PROTOCOL_TLS_CLIENT)
                         context.check_hostname = False  # Desactivar verificación del hostname
                         context.verify_mode = ssl.CERT_NONE
 
-                        with context.wrap_socket(s, server_side=True) as secure_sock:
+                        with context.wrap_socket(s, server_hostname="MFSG") as secure_sock:
                             # Configuramos el socket para lanzar un error si no recibe respuesta en 10 segundos
                             secure_sock.settimeout(10)
                             print("conecto")
@@ -1123,11 +1140,11 @@ class ChordNode:
                             # seguimos el mismo proceso
                             with socket.create_connection((ip_pred_pred, TCP_PORT)) as s:
                                 # Configurar SSL para la conexión con el predecesor del predecesor
-                                context = ssl.create_default_context(ssl.PROTOCOL_TLS_SERVER)
+                                context = ssl.create_default_context(ssl.PROTOCOL_TLS_CLIENT)
                                 context.check_hostname = False  # Desactivar verificación del hostname
                                 context.verify_mode = ssl.CERT_NONE
 
-                                with context.wrap_socket(s, server_side=True) as secure_sock:
+                                with context.wrap_socket(s, server_hostname="MFSG") as secure_sock:
                                     secure_sock.settimeout(10)  # Configurar timeout
                                     secure_sock.sendall(f'{FALL_SUCC}|{self.ip}|{self.tcp_port}'.encode('utf-8'))
                                     secure_sock.recv(1024).decode()  # Esperar respuesta
