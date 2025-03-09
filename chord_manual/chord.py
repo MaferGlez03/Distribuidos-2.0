@@ -22,7 +22,6 @@ GET_FIRST = 'get_first'
 JOIN = 'join'
 CONFIRM_JOIN = 'conf_join'
 FIX_FINGER = 'fix_fing'
-FIND_FIRST = 'fnd_first'
 FIND_FIRST_TOTAL = 'fnd_first_total'
 FIND_LEADER_TOTAL = 'fnd_leader_total'
 REQUEST_DATA = 'req_data'
@@ -803,19 +802,16 @@ class ChordNode:
         if option == FIX_FINGER:
             self.finger_update_queue.put((id, TCP_PORT))
             return
-
         elif option == REPLICATE:
             real_data = conn.recv(1024).decode().split('$$')
             for datas in real_data[1:]:
                 self.handler_data.create(datas)
-
         elif option == LOGIN:
             # Iniciar sesión
             id = data[1]
             email = data[2]
             password = data[3]
             response = self.login_user(id, email, password)
-
         elif option == CREATE_EVENT:
             # Crear un evento
             print(f"DATA: {data}")
@@ -902,7 +898,6 @@ class ChordNode:
             group_id = int(data[2])
             user_id = int(data[3])
             response = self.remove_member_from_group(id, group_id, user_id)
-
         elif option == REGISTER:
             id = int(data[1])
             name = data[2]
@@ -910,7 +905,6 @@ class ChordNode:
             password = data[4]
             # Procesar el registro
             response = self.register(id, name, email, password)
-        
         elif option == LIST_GROUPS:
             # Listar grupos de un usuario
             user_id = int(data[1])
@@ -1325,11 +1319,6 @@ class ChordNode:
                 print("self.ip, self.predecessor.ip, self.successor.ip: ",
                       self.ip, self.predecessor.ip, self.successor.ip)
 
-        elif option == FIND_FIRST:
-            if self.first == True:
-                print("Estoy buscando el first y ")
-                self.first_node = NodeReference(address, TCP_PORT)
-
         elif option == UPDATE_SUCC:
             id = int(data[1])
             new_ip = data[3]
@@ -1401,6 +1390,7 @@ class ChordNode:
         elif option == UPDATE_FIRST_TOTAL:
             id = int(data[1])
             self.actual_first_id = id
+            self.first_node = NodeReference(address, self.tcp_port)
 
         elif option == FIND_LEADER_TOTAL:
             if self.leader:
@@ -1443,7 +1433,9 @@ class ChordNode:
         self.request_leader()
         time.sleep(5)
         self.send_data_broadcast(FIX_FINGER, f'0|0')
-
+        # Si estoy solo no pido data
+        if self.predecessor.id == self.id and self.successor.id == self.id:
+            return
         data = self.successor.send_data_tcp(REQUEST_DATA, f"{self.id}").decode()
         self.handler_data.create(data)
         self.handler_data.data(True, self.predecessor.id)
@@ -1546,7 +1538,7 @@ class ChordNode:
 
     def find_first(self) -> bytes:
         """Buscar el primer nodo."""
-        self.send_data_broadcast(FIND_FIRST, f'0|0')
+        self.send_data_broadcast(FIND_FIRST_TOTAL, f'0|0')
 
     def set_first(self, id, port, old_id, old_port):
         print(f"{id} es el nuevo first y {old_id} ya no es first")

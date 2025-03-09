@@ -69,6 +69,23 @@ class Event(Base):
     group = relationship('Group', back_populates='events')
     agenda_users = relationship('UserAgenda', back_populates='event')
 
+    def __str__(self):
+        # Formatear la fecha para que sea más legible
+        formatted_date = self.date.strftime('%Y-%m-%d %H:%M:%S') if self.date else 'N/A'
+        
+        # Obtener el nombre del dueño (si está cargada la relación)
+        owner_name = self.owner.name if self.owner else 'N/A'
+        
+        # Obtener el nombre del grupo (si está cargada la relación)
+        group_name = self.group.name if self.group else 'N/A'
+        
+        # Construir la cadena de representación
+        return (
+            f"Event(id={self.id}, name='{self.name}', date='{formatted_date}', "
+            f"owner='{owner_name}', privacy='{self.privacy}', group='{group_name}', "
+            f"status='{self.status}')"
+        )
+
 class Group(Base):
     __tablename__ = 'groups'
     id = Column(Integer, primary_key=True, autoincrement=True)
