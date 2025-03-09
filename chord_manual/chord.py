@@ -1077,8 +1077,7 @@ class ChordNode:
             self.leader = True if self.predecessor.id == self.id or self.successor.id < self.id else False
 
     def check_predecessor(self):
-        print(
-            f"el id de mi predecesor es {self.predecessor.id} y el mio {self.id}")
+        print(f"el id de mi predecesor es {self.predecessor.id} y el mio {self.id}")
         while True:
             if self.predecessor.id != self.id:
                 print(f"PREDECESOR: {self.predecessor.id} YO: {self.id} SUCESOR: {self.successor.id}")
@@ -1088,8 +1087,7 @@ class ChordNode:
                     print("Voy a tratar de conectar")
                     with socket.create_connection((self.predecessor.ip, self.predecessor.port)) as s:
                         # Configurar SSL para la conexión con el predecesor
-                        context = ssl.create_default_context(
-                            ssl.Purpose.SERVER_AUTH)
+                        context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
                         context.check_hostname = False  # Desactivar verificación del hostname
                         context.verify_mode = ssl.CERT_NONE
 
@@ -1112,24 +1110,20 @@ class ChordNode:
                     self.handler_data.create(self.repli_pred)
                     #actualizar el first y el leader
                     if self.first:
-                        self.send_data_broadcast(
-                            UPDATE_LEADER, f"{self.generate_id_(ip_pred_pred)}|{TCP_PORT}|{self.predecessor.id}")
+                        self.send_data_broadcast(UPDATE_LEADER, f"{self.generate_id_(ip_pred_pred)}|{TCP_PORT}|{self.predecessor.id}")
                         time.sleep(2)
                     elif self.actual_first_id == self.predecessor.id:
-                        self.send_data_broadcast(
-                            UPDATE_FIRST, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
+                        self.send_data_broadcast(UPDATE_FIRST, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
                         time.sleep(2)
                     # actualizar la finger table
-                    self.send_data_broadcast(
-                        UPDATE_FINGER, f"{self.predecessor.id}|{self.ip}|{TCP_PORT}")
+                    self.send_data_broadcast(UPDATE_FINGER, f"{self.predecessor.id}|{self.ip}|{TCP_PORT}")
                     if self.predecessor.id != self.successor.id:  # somos al menos 3
                         try:
                             # tratamos de conectarnos con el predecesor de nuestro predecesor para comunicarle que se cayo su sucesor
                             # seguimos el mismo proceso
                             with socket.create_connection((ip_pred_pred, TCP_PORT)) as s:
                                 # Configurar SSL para la conexión con el predecesor del predecesor
-                                context = ssl.create_default_context(
-                                    ssl.Purpose.SERVER_AUTH)
+                                context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
                                 context.check_hostname = False  # Desactivar verificación del hostname
                                 context.verify_mode = ssl.CERT_NONE
 
@@ -1148,24 +1142,17 @@ class ChordNode:
                                 self.send_data_broadcast(NOTIFY, f"{self.generate_id_(ip_pred_pred)}")
                             else:
                                 print(f"Solo eramos tres nodos me reinicio")
-                                self.send_data_broadcast(
-                                    UPDATE_FIRST, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
-                                self.send_data_broadcast(
-                                    UPDATE_LEADER, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
-                                self.predecessor = NodeReference(
-                                    self.ip, self.tcp_port)
-                                self.successor = NodeReference(
-                                    self.ip, self.tcp_port)
+                                self.send_data_broadcast(UPDATE_FIRST, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
+                                self.send_data_broadcast(UPDATE_LEADER, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
+                                self.predecessor = NodeReference(self.ip, self.tcp_port)
+                                self.successor = NodeReference(self.ip, self.tcp_port)
                                 self.finger_table = self.create_finger_table()
 
                     else:
                         print(f"Solo eramos dos nodos me reinicio")
-                        self.send_data_broadcast(
-                            UPDATE_FIRST, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
-                        self.send_data_broadcast(
-                            UPDATE_LEADER, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
-                        self.predecessor = NodeReference(
-                            self.ip, self.tcp_port)
+                        self.send_data_broadcast(UPDATE_FIRST, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
+                        self.send_data_broadcast(UPDATE_LEADER, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
+                        self.predecessor = NodeReference(self.ip, self.tcp_port)
                         self.successor = NodeReference(self.ip, self.tcp_port)
                         self.finger_table = self.create_finger_table()
 
