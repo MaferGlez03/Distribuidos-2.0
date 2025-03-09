@@ -795,6 +795,7 @@ class ChordNode:
                 client.start()
 
     def _handle_client_tcp(self, conn: socket.socket, addr: tuple):
+        print(f"ADDR[0]: {addr[0]} | ADDR[1]: {addr[1]}")
         data = conn.recv(1024).decode().split('|')  # operation | id | port
         option = data[0]
         if option == '':
@@ -821,6 +822,7 @@ class ChordNode:
 
         elif option == CREATE_EVENT:
             # Crear un evento
+            print(f"DATA: {data}")
             event_id = int(data[1])
             name = data[2]
             date = data[3]
@@ -854,8 +856,9 @@ class ChordNode:
             response = self.cancel_event(event_id)
         elif option == LIST_EVENTS:
             # Listar eventos de un usuario
-            user_id = int(data[1])
-            response = self.list_events(user_id)
+            id = int(data[1])
+            user_id = int(data[2])
+            response = self.list_events(id, user_id)
         elif option == LIST_EVENTS_PENDING:
             # Listar eventos de un usuario
             user_id = int(data[1])
@@ -917,6 +920,7 @@ class ChordNode:
             response = self.login_user(id, email, password)
         elif option == CREATE_EVENT:
             # Crear un evento
+            print(f"DATA: {data}")
             event_id = int(data[1])
             name = data[2]
             date = data[3]
@@ -949,8 +953,9 @@ class ChordNode:
             response = self.cancel_event(event_id)
         elif option == LIST_EVENTS:
             # Listar eventos de un usuario
-            user_id = int(data[1])
-            response = self.list_events(user_id)
+            id = int(data[1])
+            user_id = int(data[2])
+            response = self.list_events(id, user_id)
         elif option == LIST_EVENTS_PENDING:
             # Listar eventos de un usuario
             user_id = int(data[1])
@@ -1623,7 +1628,7 @@ class ChordNode:
         """Devuelve el nodo más cercano a un ID en la finger table."""
         for i in range(8):
             if (self.id + (2**i) % 256) > id:
-                if self.finger_table[self.id + (2**(i-1)) % 256] >= id:
+                if self.finger_table[self.id + (2**(i-1)) % 256].id >= id:
                     return self.finger_table[self.id + (2**(i-1)) % 256]
                 else:
                     return self.finger_table[self.id + (2**(i)) % 256]

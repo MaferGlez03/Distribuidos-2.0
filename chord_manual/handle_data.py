@@ -42,9 +42,9 @@ class HandleData:
                     result += f'{event.id}|{event.name}|{event.date}|{event.owner_id}|{event.privacy}|{event.group_id}|{event.status}||'
                 
                 # Añadir los miembros de grupos del usuario
-                result += 'group_members/'
-                for group in user.group_members:
-                    result += f'{group.id}|{group.group_id}|{group.user_id}|{group.role}||'
+                result += 'agenda/'
+                for agenda in user.agenda:
+                    result += f'{agenda.id}|{agenda.user_id}|{agenda.event_id}|{group.role}||'
                 
                 # Añadir los grupos del usuario
                 result += 'groups/'
