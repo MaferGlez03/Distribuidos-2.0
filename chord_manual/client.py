@@ -80,6 +80,10 @@ if __name__ == "__main__":
 
         opcion = input("Seleccione una opción: ")
 
+        if opcion == "19":
+            print("Saliendo del cliente Chord...")
+            break
+
         # Buscar servidores antes de cada operación
         print("🔍 Buscando servidores activos...")
         server_ip = find_active_server("10.0.11.1", "10.0.11.20", 8000)
@@ -220,10 +224,6 @@ if __name__ == "__main__":
             group_id = input("Ingrese el ID del grupo: ")
             response = connect_to_server(server_ip, 8000, "list_group_agenda", group_id)
             print(f"🔹 Respuesta del servidor: {response}")
-
-        elif opcion == "19":
-            print("Saliendo del cliente Chord...")
-            break
 
         else:
             print("❌ Opción no válida. Intente nuevamente.")
