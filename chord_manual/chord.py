@@ -100,7 +100,7 @@ class NodeReference:
             context.verify_mode = ssl.CERT_NONE
 
             with socket.create_connection((self.ip, self.port)) as s:
-                with context.wrap_socket(s, server_hostname="MFSG") as secure_sock:
+                with context.wrap_socket(s, server_side=True) as secure_sock:
                     secure_sock.sendall(f'{op}|{data}'.encode('utf-8'))
                     return secure_sock.recv(1024)  # Recibir respuesta
         except Exception as e:
@@ -1093,7 +1093,7 @@ class ChordNode:
                         context.check_hostname = False  # Desactivar verificación del hostname
                         context.verify_mode = ssl.CERT_NONE
 
-                        with context.wrap_socket(s, server_hostname=self.predecessor.ip) as secure_sock:
+                        with context.wrap_socket(s, server_side=True) as secure_sock:
                             # Configuramos el socket para lanzar un error si no recibe respuesta en 10 segundos
                             secure_sock.settimeout(10)
                             print("conecto")
@@ -1133,7 +1133,7 @@ class ChordNode:
                                 context.check_hostname = False  # Desactivar verificación del hostname
                                 context.verify_mode = ssl.CERT_NONE
 
-                                with context.wrap_socket(s, server_hostname=ip_pred_pred) as secure_sock:
+                                with context.wrap_socket(s, server_side=True) as secure_sock:
                                     secure_sock.settimeout(10)  # Configurar timeout
                                     secure_sock.sendall(f'{FALL_SUCC}|{self.ip}|{self.tcp_port}'.encode('utf-8'))
                                     secure_sock.recv(1024).decode()  # Esperar respuesta
