@@ -971,13 +971,12 @@ class ChordNode:
             response = self.list_group_agenda(group_id)
         elif option == REQUEST_DATA:
             id = int(data[1])
-            response = ""
-            #self.handler_data.data(False, id)
+            response = self.handler_data.data(True, id)
 
         elif option == CHECK_PREDECESSOR:
-            # !AQUI EL OBJETIVO ES OBTENE LA DATA DE MI PREDECESOR
-            response = (f'0|' + self.predecessor.ip)
-            #self.handler_data.data(False)
+            # !AQUI EL OBJETIVO ES OBTENER LA DATA DE MI PREDECESOR
+            response = (self.handler_data.data(False) + self.predecessor.ip)
+
             # si somos al menos 3 nodos, le mando a mi sucesor la data de mi predecesor
             if self.predecessor.id != self.successor.id:
                 self.successor.send_data_tcp(DATA_PRED, self.repli_pred)
@@ -1082,8 +1081,7 @@ class ChordNode:
             f"el id de mi predecesor es {self.predecessor.id} y el mio {self.id}")
         while True:
             if self.predecessor.id != self.id:
-                print(
-                    f"PREDECESOR: {self.predecessor.id}   YO: {self.id}    SUCESOR: {self.successor.id}")
+                print(f"PREDECESOR: {self.predecessor.id} YO: {self.id} SUCESOR: {self.successor.id}")
                 print("Somos diferentes")
 
                 try:
@@ -1109,12 +1107,10 @@ class ChordNode:
                             # Guardamos el id del predecesor de nuestro predecesor
                             ip_pred_pred = self.repli_pred.split('|')[-1]
                 except:
-                    print(
-                        f"El servidor {self.predecessor.ip} se ha desconectado")
-                    # self.update_repli_list(self.predecessor.id)
-                    # replicar la info del predecesor que se cayó
-                    #self.handler_data.create(self.repli_pred)
-                    # actualizar el first y el leader
+                    print(f"El servidor {self.predecessor.ip} se ha desconectado")
+                    #replicar la info del predecesor que se cayó
+                    self.handler_data.create(self.repli_pred)
+                    #actualizar el first y el leader
                     if self.first:
                         self.send_data_broadcast(
                             UPDATE_LEADER, f"{self.generate_id_(ip_pred_pred)}|{TCP_PORT}|{self.predecessor.id}")
@@ -1138,33 +1134,19 @@ class ChordNode:
                                 context.verify_mode = ssl.CERT_NONE
 
                                 with context.wrap_socket(s, server_hostname=ip_pred_pred) as secure_sock:
-                                    # Configurar timeout
-                                    secure_sock.settimeout(10)
-                                    secure_sock.sendall(
-                                        f'{FALL_SUCC}|{self.ip}|{self.tcp_port}'.encode('utf-8'))
-                                    # Esperar respuesta
-                                    secure_sock.recv(1024).decode()
-                                # print(self.predecessor.id)
-                                # print(self.successor.id)
-                            # Iniciar actualizaciones de listas de sucesores a partir del predecesor del predecesor
-                            # time.sleep(5)
-                            # threading.Thread(target=NodeReference(ip_pred_pred, self.tcp_port).send_data_tcp, args=(UPDATE_SUCC_LIST, f'$')).start()
-                            # time.sleep(5)
-                            # threading.Thread(target=NodeReference(self.ip, self.tcp_port).send_data_tcp, args=(UPDATE_PRED_LIST, f'$')).start()
-                            # self.update_repli_list(self.predecessor.id)
+                                    secure_sock.settimeout(10)  # Configurar timeout
+                                    secure_sock.sendall(f'{FALL_SUCC}|{self.ip}|{self.tcp_port}'.encode('utf-8'))
+                                    secure_sock.recv(1024).decode()  # Esperar respuesta
                         except:
-                            print(
-                                f"El servidor {ip_pred_pred} se ha desconectado tambien")
-                            # self.update_repli_list(self.generate_id(ip_pred_pred))
-                            # replicar data
-                            #self.handler_data.create(self.repli_pred_pred)
+                            print(f"El servidor {ip_pred_pred} se ha desconectado tambien")
+                            #replicar data
+                            self.handler_data.create(self.repli_pred_pred)
                             if ip_pred_pred != self.successor.ip:
                                 if self.generate_id_(ip_pred_pred) == self.actual_first_id:
-                                    self.send_data_broadcast(
-                                        UPDATE_FIRST, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
+                                    self.send_data_broadcast(UPDATE_FIRST, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
                                 time.sleep(2)
-                                self.send_data_broadcast(
-                                    NOTIFY, f"{self.generate_id_(ip_pred_pred)}")
+                                self.send_data_broadcast(NOTIFY, f"{self.generate_id_(ip_pred_pred)}")
+                            else:
                                 print(f"Solo eramos tres nodos me reinicio")
                                 self.send_data_broadcast(
                                     UPDATE_FIRST, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
@@ -1491,12 +1473,10 @@ class ChordNode:
                         time.sleep(2)
                     #!self._request_data(succ=True)
                     self.successor = NodeReference(address, self.tcp_port)
-                    self.successor.send_data_tcp(
-                        UPDATE_PREDECESSOR, f'{self.ip}|{self.tcp_port}')
+                    self.successor.send_data_tcp(UPDATE_PREDECESSOR, f'{self.ip}|{self.tcp_port}')
                     # si el nodo que me notifico tiene menor id que yo, que actualicen al nodo caido conmigo, pues soy el nuevo lider
                     # en caso contrario, que actualicen con el nodo notificante
-                    self.send_data_broadcast(
-                        UPDATE_FINGER, f"{id}|{address}|{TCP_PORT}")
+                    self.send_data_broadcast(UPDATE_FINGER, f"{id}|{address}|{TCP_PORT}")
 
     def join(self):
         op = JOIN
@@ -1507,9 +1487,11 @@ class ChordNode:
         self.request_leader()
         time.sleep(5)
         self.send_data_broadcast(FIX_FINGER, f'0|0')
-        #data = self.successor.send_data_tcp(REQUEST_DATA, self.id).decode()
-        #self.handler_data.create(data)
-        #self.handler_data.data(True, self.predecessor.id)
+
+        data = self.successor.send_data_tcp(REQUEST_DATA, self.id).decode()
+        self.handler_data.create(data)
+        self.handler_data.data(True, self.predecessor.id)
+
 
     def create_finger_table(self):
         table = {}

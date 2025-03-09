@@ -13,8 +13,8 @@ session = Session()
 
 class HandleData:
     def __init__(self, id: int):
-        self._garbage = []  # Lista de datos a eliminar
-        self._id = id       # ID del nodo actual
+        self.garbage = []  # Lista de datos a eliminar
+        self.id = id       # ID del nodo actual
 
     def data(self, delete: bool, id=None) -> str:
         """
@@ -28,7 +28,7 @@ class HandleData:
         users = session.query(User).all()
         for user in users:
             user_id = self.set_id(user.email)  # Usamos el email para generar el ID
-            if id is None or (id < self._id and user_id < id) or (id > self._id and user_id > self._id):
+            if id is None or (id <= self.id and user_id <= id) or (id >= self.id and user_id >= self.id and user_id <= id) or (id <= self.id and user_id >= self.id):
                 result += f'{user.id}|{user.name}|{user.email}|{user.password_hash}$'  # Añadir al usuario
                 
                 # Añadir los eventos del usuario
@@ -52,7 +52,7 @@ class HandleData:
                     result += f'{group.id}|{group.name}|{group.owner_id}||'
                 
                 result += '|'
-                self._garbage.append(user.id)  # Añadir el usuario a la lista de garbage
+                self.garbage.append(user.id)  # Añadir el usuario a la lista de garbage
         
         # Eliminar los datos si delete es True
         self._clean(delete)
@@ -153,7 +153,7 @@ class HandleData:
         Elimina los datos de la base de datos que están en la lista _garbage.
         """
         if delete:
-            for user_id in self._garbage:
+            for user_id in self.garbage:
                 user = session.query(User).filter_by(id=user_id).first()
                 if user:
                     # Eliminar eventos, contactos y grupos del usuario
@@ -166,7 +166,7 @@ class HandleData:
             session.commit()
         
         # Reiniciar la lista de garbage
-        self._garbage = []
+        self.garbage = []
 
     def set_id(self, data: str) -> int:
         """
