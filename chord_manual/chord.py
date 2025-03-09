@@ -730,25 +730,25 @@ class ChordNode:
     def start_tcp_server(self):
         """Iniciar el servidor TCP con SSL."""
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        context.load_cert_chain(
-            certfile="/app/certificate.pem", keyfile="/app/private_key.pem")
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             s.bind((self.ip, self.tcp_port))
-            s.listen()
+            s.listen(10)
 
             print(f'🔒 Servidor SSL TCP en ({self.ip}, {self.tcp_port})')
 
-            with context.wrap_socket(s, server_side=True) as secure_socket:
-                while True:
-                    conn, addr = secure_socket.accept()
-                    print(f"🔵 Conexión aceptada desde {addr}")
-                    # Envía una respuesta al cliente
-                    #conn.sendall(b"Servidor activo\n")
-                    client = threading.Thread(
-                    target=self._handle_client_tcp, args=(conn, addr))
-                    client.start()
+            # with context.wrap_socket(s, server_side=True) as secure_socket:
+            while True:
+                conn, addr = s.accept()
+                print(f"🔵 Conexión aceptada desde {addr}")
+                # Envía una respuesta al cliente
+                #conn.sendall(b"Servidor activo\n")
+                client = threading.Thread(
+                target=self._handle_client_tcp, args=(conn, addr))
+                client.start()
 
     def _handle_client_tcp(self, conn: socket.socket, addr: tuple):
         data = conn.recv(1024).decode().split('|')  # operation | id | port

@@ -41,12 +41,13 @@ def connect_to_server(server_ip, server_port, operation, data):
         context.verify_mode = ssl.CERT_NONE
         # context.load_verify_locations("ssl/certificate.pem")  # Cargar certificado
 
-        with socket.create_connection((server_ip, int(8000))) as sock:
+        with socket.create_connection((server_ip, server_port)) as sock:
             with context.wrap_socket(sock, server_hostname=server_ip) as secure_sock:
                 secure_sock.sendall(f'{operation}|{data}'.encode('utf-8'))
                 return secure_sock.recv(1024).decode()
     except Exception as e:
         return f"Error en la conexión SSL: {e}"
+    
 
 def generate_id_(ip):
     """Genera un ID único basado en el hash de la IP y puerto."""
