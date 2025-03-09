@@ -93,36 +93,49 @@ class NodeReference:
         # print("data: ", data, "return: ", ret)
         return ret
 
+    # def send_data_tcp(self, op, data):
+    #     try:
+    #         # ✅ Crear socket base (TCP)
+    #         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as raw_sock:
+    #             raw_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+    #             # ✅ Conectar al destino
+    #             raw_sock.connect((self.ip, self.port))
+
+    #             # ✅ Crear contexto SSL para cliente
+    #             context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+    #             context.check_hostname = False
+    #             context.verify_mode = ssl.CERT_NONE
+
+    #             # ✅ Envolver la conexión con SSL
+    #             with context.wrap_socket(raw_sock, server_hostname="MFSG") as ssl_sock:
+    #                 print(f"🔒 Conexión SSL establecida con {self.ip}:{self.port}")
+
+    #                 # ✅ Enviar datos
+    #                 ssl_sock.sendall(f'{op}|{data}'.encode('utf-8'))
+    #                 print(f"📤 Datos enviados: {op}|{data}")
+
+    #                 # ✅ Recibir respuesta
+    #                 response = ssl_sock.recv(1024)
+    #                 print(f"📥 Respuesta recibida: {response.decode('utf-8')}")
+    #                 return response
+
+    #     except Exception as e:
+    #         print(f"❌ Error en send_data_tcp: {e}")
+    #         return b''
+        
     def send_data_tcp(self, op, data):
         try:
-            # ✅ Crear socket base (TCP)
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as raw_sock:
-                raw_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-                # ✅ Conectar al destino
-                raw_sock.connect((self.ip, self.port))
-
-                # ✅ Crear contexto SSL para cliente
-                context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-                context.check_hostname = False
-                context.verify_mode = ssl.CERT_NONE
-
-                # ✅ Envolver la conexión con SSL
-                with context.wrap_socket(raw_sock, server_hostname="MFSG") as ssl_sock:
-                    print(f"🔒 Conexión SSL establecida con {self.ip}:{self.port}")
-
-                    # ✅ Enviar datos
-                    ssl_sock.sendall(f'{op}|{data}'.encode('utf-8'))
-                    print(f"📤 Datos enviados: {op}|{data}")
-
-                    # ✅ Recibir respuesta
-                    response = ssl_sock.recv(1024)
-                    print(f"📥 Respuesta recibida: {response.decode('utf-8')}")
-                    return response
-
+            # 🔹 Cambiar a TCP (SOCK_STREAM)
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((self.ip, self.port))  # 🔹 Conectar al servidor TCP
+                # 🔹 Enviar mensaje correctamente
+                s.sendall(f'{op}|{data}'.encode('utf-8'))
+                # print(f"Mensaje enviado correctamente vía TCP. Operation: {op} Data: {data}")
+                return s.recv(1024)
         except Exception as e:
-            print(f"❌ Error en send_data_tcp: {e}")
-            return b''
+            print(f"Mensaje fallido. Operation: {op} Data: {data} Error: {e}")
+            return False
 
 
 class ChordNode:
@@ -744,27 +757,41 @@ class ChordNode:
 # endregion
 # region CHORD
 
-    def start_tcp_server(self):
-        """Iniciar el servidor TCP con SSL."""
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        context.check_hostname = False
-        context.verify_mode = ssl.CERT_NONE
+    # def start_tcp_server(self):
+    #     """Iniciar el servidor TCP con SSL."""
+    #     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    #     context.check_hostname = False
+    #     context.verify_mode = ssl.CERT_NONE
 
+    #     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    #         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    #         s.bind((self.ip, self.tcp_port))
+    #         s.listen(10)
+
+    #         print(f'🔒 Servidor SSL TCP en ({self.ip}, {self.tcp_port})')
+
+    #         # with context.wrap_socket(s, server_side=True) as secure_socket:
+    #         while True:
+    #             conn, addr = s.accept()
+    #             print(f"🔵 Conexión aceptada desde {addr}")
+    #             # Envía una respuesta al cliente
+    #             #conn.sendall(b"Servidor activo\n")
+    #             client = threading.Thread(
+    #             target=self._handle_client_tcp, args=(conn, addr))
+    #             client.start()
+    def start_tcp_server(self):
+        """Iniciar el servidor TCP."""
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             s.bind((self.ip, self.tcp_port))
-            s.listen(10)
+            print(f'Socket TCP binded to ({self.ip}, {self.tcp_port})')
+            s.listen()
 
-            print(f'🔒 Servidor SSL TCP en ({self.ip}, {self.tcp_port})')
-
-            # with context.wrap_socket(s, server_side=True) as secure_socket:
+            # Se queda escuchando cualquier mensaje entrante
             while True:
+                time.sleep(1)
                 conn, addr = s.accept()
-                print(f"🔵 Conexión aceptada desde {addr}")
-                # Envía una respuesta al cliente
-                #conn.sendall(b"Servidor activo\n")
-                client = threading.Thread(
-                target=self._handle_client_tcp, args=(conn, addr))
+                client = threading.Thread(target=self._handle_client_tcp, args=(conn, addr))
                 client.start()
 
     def _handle_client_tcp(self, conn: socket.socket, addr: tuple):
@@ -1102,25 +1129,40 @@ class ChordNode:
 
                 try:
                     print("Voy a tratar de conectar")
-                    with socket.create_connection((self.predecessor.ip, self.predecessor.port)) as s:
-                        # Configurar SSL para la conexión con el predecesor
-                        context = ssl.create_default_context(ssl.PROTOCOL_TLS_CLIENT)
-                        context.check_hostname = False  # Desactivar verificación del hostname
-                        context.verify_mode = ssl.CERT_NONE
+                    # with socket.create_connection((self.predecessor.ip, self.predecessor.port)) as s:
+                    #     # Configurar SSL para la conexión con el predecesor
+                    #     context = ssl.create_default_context(ssl.PROTOCOL_TLS_CLIENT)
+                    #     context.check_hostname = False  # Desactivar verificación del hostname
+                    #     context.verify_mode = ssl.CERT_NONE
 
-                        with context.wrap_socket(s, server_hostname="MFSG") as secure_sock:
-                            # Configuramos el socket para lanzar un error si no recibe respuesta en 10 segundos
-                            secure_sock.settimeout(10)
-                            print("conecto")
+                    # with context.wrap_socket(s, server_hostname="MFSG") as secure_sock:
+                    #     # Configuramos el socket para lanzar un error si no recibe respuesta en 10 segundos
+                    #     secure_sock.settimeout(10)
+                    #     print("conecto")
 
-                            op = CHECK_PREDECESSOR
-                            data = f"0|0"
-                            # Chequeamos que no se ha caído el predecesor
-                            secure_sock.sendall(f'{op}|{data}'.encode('utf-8'))
-                            # Guardamos la info recibida
-                            self.repli_pred = secure_sock.recv(1024).decode()
-                            # Guardamos el id del predecesor de nuestro predecesor
-                            ip_pred_pred = self.repli_pred.split('|')[-1]
+                    #     op = CHECK_PREDECESSOR
+                    #     data = f"0|0"
+                    #     # Chequeamos que no se ha caído el predecesor
+                    #     secure_sock.sendall(f'{op}|{data}'.encode('utf-8'))
+                    #     # Guardamos la info recibida
+                    #     self.repli_pred = secure_sock.recv(1024).decode()
+                    #     # Guardamos el id del predecesor de nuestro predecesor
+                    #     ip_pred_pred = self.repli_pred.split('|')[-1]
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                        # nos conectamos x via TCP al predecesor
+                        s.connect((self.predecessor.ip, self.predecessor.port))
+                        # configuramos el socket para lanzar un error si no recibe respuesta en 5 segundos
+                        s.settimeout(10)
+                        print("conecto")
+                        op = CHECK_PREDECESSOR
+                        data = f"0|0"
+                        # chequeamos que no se ha caido el predecesor
+                        s.sendall(f'{op}|{data}'.encode('utf-8'))
+                        # guardamos la info recibida
+                        self.pred_repli = s.recv(1024).decode()
+                        # guardamos el id del predecesor de nuestro predecesor
+                        ip_pred_pred = self.pred_repli.split('|')[-1]
+
                 except:
                     print(f"El servidor {self.predecessor.ip} se ha desconectado")
                     #replicar la info del predecesor que se cayó
@@ -1138,16 +1180,11 @@ class ChordNode:
                         try:
                             # tratamos de conectarnos con el predecesor de nuestro predecesor para comunicarle que se cayo su sucesor
                             # seguimos el mismo proceso
-                            with socket.create_connection((ip_pred_pred, TCP_PORT)) as s:
-                                # Configurar SSL para la conexión con el predecesor del predecesor
-                                context = ssl.create_default_context(ssl.PROTOCOL_TLS_CLIENT)
-                                context.check_hostname = False  # Desactivar verificación del hostname
-                                context.verify_mode = ssl.CERT_NONE
-
-                                with context.wrap_socket(s, server_hostname="MFSG") as secure_sock:
-                                    secure_sock.settimeout(10)  # Configurar timeout
-                                    secure_sock.sendall(f'{FALL_SUCC}|{self.ip}|{self.tcp_port}'.encode('utf-8'))
-                                    secure_sock.recv(1024).decode()  # Esperar respuesta
+                            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                                s.connect((ip_pred_pred, TCP_PORT))
+                                s.settimeout(10)
+                                s.sendall(f'{FALL_SUCC}|{self.ip}|{self.tcp_port}'.encode('utf-8'))
+                                s.recv(1024).decode()
                         except:
                             print(f"El servidor {ip_pred_pred} se ha desconectado tambien")
                             #replicar data
@@ -1492,7 +1529,7 @@ class ChordNode:
         time.sleep(5)
         self.send_data_broadcast(FIX_FINGER, f'0|0')
 
-        data = self.successor.send_data_tcp(REQUEST_DATA, self.id).decode()
+        data = self.successor.send_data_tcp(REQUEST_DATA, f"{self.id}").decode()
         self.handler_data.create(data)
         self.handler_data.data(True, self.predecessor.id)
 

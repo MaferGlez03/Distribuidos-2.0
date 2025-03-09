@@ -33,21 +33,33 @@ def find_active_server(start_ip, end_ip, port, timeout=1):
     print("❌ No se encontró ningún servidor en el rango especificado.")
     return None  # No se encontró ningún servidor
 
-def connect_to_server(server_ip, server_port, operation, data):
-    """Conecta al servidor Chord con SSL y envía una solicitud."""
-    try:
-        context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-        context.check_hostname = False
-        context.verify_mode = ssl.CERT_NONE
-        # context.load_verify_locations("ssl/certificate.pem")  # Cargar certificado
+# def connect_to_server(server_ip, server_port, operation, data):
+#     """Conecta al servidor Chord con SSL y envía una solicitud."""
+#     try:
+#         context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+#         context.check_hostname = False
+#         context.verify_mode = ssl.CERT_NONE
+#         # context.load_verify_locations("ssl/certificate.pem")  # Cargar certificado
 
-        with socket.create_connection((server_ip, server_port)) as sock:
-            with context.wrap_socket(sock, server_hostname="MFSG") as secure_sock:
-                secure_sock.sendall(f'{operation}|{data}'.encode('utf-8'))
-                return secure_sock.recv(1024).decode()
-    except Exception as e:
-        return f"Error en la conexión SSL: {e}"
+#         with socket.create_connection((server_ip, server_port)) as sock:
+#             with context.wrap_socket(sock, server_hostname="MFSG") as secure_sock:
+#                 secure_sock.sendall(f'{operation}|{data}'.encode('utf-8'))
+#                 return secure_sock.recv(1024).decode()
+#     except Exception as e:
+#         return f"Error en la conexión SSL: {e}"
     
+def connect_to_server(server_ip, server_port, operation, data):
+    """Conecta al servidor Chord por TCP y envía una solicitud."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            s.connect((server_ip, int(server_port)))  # 🔹 Conectar al servidor TCP
+            # 🔹 Enviar mensaje correctamente
+            s.sendall(f'{operation}|{data}'.encode('utf-8'))
+            # print(f"Mensaje enviado correctamente vía TCP. Operation: {op} Data: {data}")
+            return s.recv(1024).decode('utf-8').strip()
+    except Exception as e:
+        return f"Error en la conexión: {e}"
 
 def generate_id_(ip):
     """Genera un ID único basado en el hash de la IP y puerto."""
@@ -104,7 +116,7 @@ if __name__ == "__main__":
             password = input("Ingrese su contraseña: ")
             user_id = generate_id_(name)
             print(f"user_id: {user_id}")
-            response = connect_to_server(server_ip,8000, "reg", f"{user_id}|{name}|{email}|{password}")
+            response = connect_to_server(server_ip, 8000, "reg", f"{user_id}|{name}|{email}|{password}")
             print(f"🔹 Respuesta del servidor: {response}")
 
         elif opcion == "2":
