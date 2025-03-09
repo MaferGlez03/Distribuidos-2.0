@@ -88,7 +88,7 @@ if __name__ == "__main__":
             print("❌ No se encontraron servidores Chord. Intente nuevamente.")
             continue  # Volver al menú
 
-        print("✅ Servidor disponibles:", server_ip)
+        print("✅ Servidor(es) disponible(s):", server_ip)
 
         
         
