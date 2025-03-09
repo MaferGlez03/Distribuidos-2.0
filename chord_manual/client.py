@@ -42,7 +42,7 @@ def connect_to_server(server_ip, server_port, operation, data):
         # context.load_verify_locations("ssl/certificate.pem")  # Cargar certificado
 
         with socket.create_connection((server_ip, server_port)) as sock:
-            with context.wrap_socket(sock, server_hostname=server_ip) as secure_sock:
+            with context.wrap_socket(sock, server_hostname="MFSG") as secure_sock:
                 secure_sock.sendall(f'{operation}|{data}'.encode('utf-8'))
                 return secure_sock.recv(1024).decode()
     except Exception as e:

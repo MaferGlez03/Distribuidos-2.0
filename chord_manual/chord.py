@@ -100,7 +100,7 @@ class NodeReference:
             context.verify_mode = ssl.CERT_NONE
 
             with socket.create_connection((self.ip, self.port)) as s:
-                with context.wrap_socket(s, server_hostname=self.ip) as secure_sock:
+                with context.wrap_socket(s, server_hostname="MFSG") as secure_sock:
                     secure_sock.sendall(f'{op}|{data}'.encode('utf-8'))
                     return secure_sock.recv(1024)  # Recibir respuesta
         except Exception as e:
