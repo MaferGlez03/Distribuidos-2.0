@@ -2,22 +2,12 @@
 default_bits       = 2048
 prompt            = no
 default_md        = sha256
-req_extensions    = req_ext
 distinguished_name = dn
 
 [ dn ]
-C  = US
-ST = Florida
-L  = Miami
-O  = MyLocalApp
-OU = Development
-CN = 172.25.0.2  # La IP principal del servidor
-
-[ req_ext ]
-subjectAltName = @alt_names
-
-[ alt_names ]
-IP.1 = 172.25.0.2  # IP del servidor
-IP.2 = 172.25.0.3  # Otra IP si el servidor puede usar varias
-IP.3 = 172.25.0.100  # Puedes agregar más si necesitas
-DNS.1 = myserver.local  # O un nombre de dominio interno
+C  = US                     # Código del país (ejemplo: US para Estados Unidos)
+ST = Florida                # Estado o provincia
+L  = Miami                  # Ciudad o localidad
+O  = MyLocalApp             # Nombre de la organización
+OU = Development            # Unidad organizacional
+CN = MFSG                   # Common Name (IP o dominio del servidor)
