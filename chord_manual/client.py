@@ -61,6 +61,23 @@ def generate_id_(ip):
     node_info = f"{ip}"
     return int(hashlib.sha1(node_info.encode()).hexdigest(), 16) % (2 ** 8)
 
+def select_in(option: str) -> str:
+    if option == 'privacy':
+        while True:
+            option = input("Ingrese la privacidad del evento ('public' o 'private'): ").strip().lower()
+            if option in ['private', 'public']:
+                return option
+            else:
+                print("Opción no válida. Por favor, elige 'public' o 'private'.")
+    if option == '':
+        while True:
+            option = input("").strip().upper()
+            if option in []:
+                return option
+            else:
+                print("Opción no válida. Por favor, elige ")
+
+
 def unregister_user():
     """
     Desregistra al usuario actual, vaciando la variable chord_id.

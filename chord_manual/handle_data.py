@@ -1,8 +1,7 @@
-from threading import Event
-from storage import Contact, Group, User, GroupMember
+from storage import Contact, Group, User, GroupMember, Event
 import hashlib
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, joinedload
 from datetime import datetime
 import os
 
@@ -24,34 +23,44 @@ class HandleData:
         """
         result = ''
         
-        # Obtener todos los usuarios de la base de datos
-        users = session.query(User).all()
+        # Obtener todos los usuarios de la base de datos con relaciones cargadas
+        users = session.query(User).options(
+            joinedload(User.contacts),  # Cargar contactos
+            joinedload(User.events),    # Cargar eventos
+            joinedload(User.agenda),  # Cargar contactos
+            joinedload(User.groups),    # Cargar eventos
+        ).all()
         for user in users:
             user_id = self.set_id(user.email)  # Usamos el email para generar el ID
+            print(f"USUARIO: {user_id}")
+            print(f"Numero de contactos: {len(user.contacts)}")
+            print(f"Numero de eventos: {len(user.events)}")
+            print(f"Numero de agendas: {len(user.agenda)}")
+            print(f"Numero de grupos: {len(user.groups)}")
             if id is None or (id <= self.id and user_id <= id) or (id >= self.id and user_id >= self.id and user_id <= id) or (id <= self.id and user_id >= self.id):
-                result += f'{user.id}|{user.name}|{user.email}|{user.password_hash}$'  # Añadir al usuario
+                result += f'{user.id}|{user.name}|{user.email}|{user.password_hash}¡¡'  # Añadir al usuario
                 
                 # Añadir los eventos del usuario
-                result += 'contacts/'
                 for contact in user.contacts:
+                    result += 'contacts¡'
                     result += f'{contact.id}|{contact.user_id}|{contact.owner.id}|{contact.contact_name}||'
                 
                 # Añadir los contactos del usuario
-                result += 'events/'
                 for event in user.events:
+                    result += 'events¡'
                     result += f'{event.id}|{event.name}|{event.date}|{event.owner_id}|{event.privacy}|{event.group_id}|{event.status}||'
                 
                 # Añadir los miembros de grupos del usuario
-                result += 'agenda/'
                 for agenda in user.agenda:
+                    result += 'agenda¡'
                     result += f'{agenda.id}|{agenda.user_id}|{agenda.event_id}|{group.role}||'
                 
                 # Añadir los grupos del usuario
-                result += 'groups/'
                 for group in user.groups:
+                    result += 'groups¡'
                     result += f'{group.id}|{group.name}|{group.owner_id}||'
                 
-                result += '|'
+                if result[-1] != '¡': result += '|'
                 self.garbage.append(user.id)  # Añadir el usuario a la lista de garbage
         
         # Eliminar los datos si delete es True
@@ -63,24 +72,35 @@ class HandleData:
         """
         Crea datos en la base de datos a partir de una cadena formateada.
         """
+        print(data)
         users = data.split('|||')  # Dividir la cadena en usuarios
+        print(users)
         for user in users:
             if user != '':
-                user_data = user.split('$')  # Dividir en datos del usuario, data
-                user = user_data[0].split('|')  # Datos del Usuario
-                user_id = user[0]
+                user_data = user.split('¡¡')  # Dividir en datos del usuario, data
+                print(user_data)
+                user1 = user_data[0].split('|')  # Datos del Usuario
+                print(user1)
+                user_id = user1[0]
+                print(user_id)
                 data = user_data[1]
+                print(data)
                 tablas = data.split('||')
+                print(tablas)
                 
                 # Crear el usuario si no existe
                 user_db = session.query(User).filter_by(id=user_id).first()
                 if not user_db:
-                    user_db = User(id=user_id, name=user[1], email=user[2], password_hash=user[3])
+                    user_db = User(id=user_id, name=user1[1], email=user1[2], password_hash=user1[3])
                     session.add(user_db)
                 
-
+                if tablas[0] == '':
+                    session.commit()
+                    return
                 # Procesar los datos del usuario
-                for titulo, info in [tabla.split('/') for tabla in tablas]:
+                listica = [tabla.split('¡') for tabla in tablas]
+                print(f"listica: {listica}")
+                for titulo, info in [tabla.split('¡') for tabla in tablas]:
                     if titulo == 'events':
                         # Crear un evento
                         event_id = int(info[0])
