@@ -172,6 +172,7 @@ class ChordNode:
         threading.Thread(target=self.handle_finger_table_update).start()
 
         self.join()
+# region DB
 
     def register(self, id: int, name: str, email: str, password: str) -> str:
         print(f"register {id} {self.id}")
@@ -182,7 +183,8 @@ class ChordNode:
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+                local_response = self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+                return local_response.decode()
 
         elif id < self.id:
             if id > self.predecessor.id or self.first:
@@ -191,13 +193,13 @@ class ChordNode:
                 # Reenviar al "first"
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+                local_response = self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+                return local_response.decode()
         else:
             # Registrar localmente
             print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
-# region DB
-
+            local_response = self._closest_preceding_node(id).send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
+            return local_response.decode()
     def _register(self, id: int, name: str, email: str, password: str) -> str:
 
         success = self.db.register_user(name, email, password)
@@ -211,7 +213,8 @@ class ChordNode:
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(LOGIN, f"{id}|{name}|{password}")
+                local_response=self.first_node.send_data_tcp(LOGIN, f"{id}|{name}|{password}")
+                return local_response.decode()
 
         elif id < self.id:
             if id > self.predecessor.id or self.first:
@@ -220,131 +223,80 @@ class ChordNode:
                 # Reenviar al "first"
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(LOGIN, f"{id}|{name}|{password}")
+                local_response= self.first_node.send_data_tcp(LOGIN, f"{id}|{name}|{password}")
+                return local_response.decode()
         else:
             # Registrar localmente
             print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(LOGIN, f"{id}|{name}|{password}")
-
+            local_response= self._closest_preceding_node(id).send_data_tcp(LOGIN, f"{id}|{name}|{password}")
+            return local_response.decode()
     def _login_user(self, id: int, name: str, password: str) -> str:
 
         success = self.db.login_user(name, password)
         print(success)
         return ("User logged", success[1]) if success else ("Failed to log user in", success[1])
 
-    def create_event(self, event_id: int, name: str, date: str, privacy: str, group_id=None) -> str:
+    def create_event(self, id: int, name: str, date: str,owner:str, privacy: str, group_id=None) -> str:
         if id > self.actual_leader_id:
             if self.first:
-                return self._create_event(event_id, name, date, privacy, group_id)
+                return self._create_event(name, date,owner, privacy, group_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(CREATE_EVENT, f'{event_id}|{name}|{date}|{privacy}|{group_id}')
-
+                local_response = self.first_node.send_data_tcp(CREATE_EVENT, f'{id}|{name}|{date}|{owner}|{privacy}|{group_id}')
+                return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
-                return self._create_event(event_id, name, date, privacy, group_id)
+                return self._create_event(name, date,owner, privacy, group_id)
             else:
                 # Reenviar al "first"
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(CREATE_EVENT, f'{event_id}|{name}|{date}|{privacy}|{group_id}')
+                local_response = self.first_node.send_data_tcp(CREATE_EVENT, f'{id}|{name}|{date}|{owner}|{privacy}|{group_id}')
+                return local_response.decode()
         else:
             # Registrar localmente
             print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(CREATE_EVENT, f'{event_id}|{name}|{date}|{privacy}|{group_id}')
-
-    def _create_event(self, event_id: int, name: str, date: str, privacy: str, group_id=None) -> str:
-
+            local_response = self._closest_preceding_node(id).send_data_tcp(CREATE_EVENT, f'{id}|{name}|{date}|{owner}|{privacy}|{group_id}')
+            return local_response.decode()
+    def _create_event(self, name: str, date: str,owner:str, privacy: str, group_id=None) -> str:
+        owner_id = self.db.getUserID(owner)
         success = self.db.create_event(
-            name, date, event_id, privacy, group_id)
+            name, date, owner_id, privacy, group_id)
         print(success)
         return f"Event created: {name}" if success else f"Failed to create event {name}"
 
-    def create_group_event(self, event_id: int, name: str, date: str, group_id=None) -> str:
+    def create_group_event(self, id: int, name: str, date: str, owner:str, group_id) -> str:
         print(f"register {id} {self.id}")
         if id > self.actual_leader_id:
             if self.first:
                 print(f"voy a registrar a { id } yo con {self.id}")
-                return self._create_group_event(event_id, name, date, group_id)
+                return self._create_group_event(name, date,owner, group_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(CREATE_GROUP_EVENT, f'{event_id}|{name}|{date}|{group_id}')
-
+                local_response = self.first_node.send_data_tcp(CREATE_GROUP_EVENT, f'{id}|{name}|{date}|{owner}|{group_id}')
+                return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
-                return self._create_group_event(event_id, name, date, group_id)
+                return self._create_group_event(name, date,owner, group_id)
             else:
                 # Reenviar al "first"
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(CREATE_GROUP_EVENT, f'{event_id}|{name}|{date}|{group_id}')
+                local_response = self.first_node.send_data_tcp(CREATE_GROUP_EVENT, f'{id}|{name}|{date}|{owner}|{group_id}')
+                return local_response.decode()    
         else:
             # Registrar localmente
             print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(CREATE_GROUP_EVENT, f'{event_id}|{name}|{date}|{group_id}')
-
-    def _create_group_event(self, event_id: int, name: str, date: str, group_id=None) -> str:
-
+            local_response = self._closest_preceding_node(id).send_data_tcp(CREATE_GROUP_EVENT, f'{id}|{name}|{date}|{owner}|{group_id}')
+            return local_response.decode()
+    def _create_group_event(self, name: str, date: str,owner:str, group_id=None) -> str:
+        owner_id = self.db.getUserID(owner)
         success = self.db.create_group_event(
-            name, date, event_id, group_id)
+            name, date, owner_id, group_id)
         print(success)
         return f"Event created: {name}" if success else f"Failed to create event {name}"
-
-    def create_individual_event(self, event_id: int, name: str, date: str, group_id=None) -> str:
-        print(f"register {id} {self.id}")
-        if id > self.actual_leader_id:
-            if self.first:
-                print(f"voy a registrar a { id } yo con {self.id}")
-                return self._create_individual_event(event_id, name, date, group_id)
-            else:
-                self.find_first()
-                time.sleep(3)
-                return self.first_node.send_data_tcp(CREATE_INDIVIDUAL_EVENT, f'{event_id}|{name}|{date}|{group_id}')
-
-        elif id < self.id:
-            if id > self.predecessor.id or self.first:
-                return self._create_individual_event(event_id, name, date, group_id)
-            else:
-                # Reenviar al "first"
-                self.find_first()
-                time.sleep(3)
-                return self.first_node.send_data_tcp(CREATE_INDIVIDUAL_EVENT, f'{event_id}|{name}|{date}|{group_id}')
-        else:
-            # Registrar localmente
-            print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(CREATE_INDIVIDUAL_EVENT, f'{event_id}|{name}|{date}|{group_id}')
-
-    def _create_individual_event(self, event_id: int, name: str, date: str, group_id=None) -> str:
-
-        success = self.db.create_individual_event(
-            name, date, event_id, group_id)
-        return f"Event created: {name}" if success else f"Failed to create event {name}"
-
-    def register(self, id: int, name: str, email: str, password: str) -> str:
-        print(f"register {id} {self.id}")
-        if id > self.actual_leader_id:
-            if self.first:
-                print(f"voy a registrar a { id } yo con {self.id}")
-                return self._register(id, name, email, password)
-            else:
-                self.find_first()
-                time.sleep(3)
-                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
-
-        elif id < self.id:
-            if id > self.predecessor.id or self.first:
-                return self._register(id, name, email, password)
-            else:
-                # Reenviar al "first"
-                self.find_first()
-                time.sleep(3)
-                return self.first_node.send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
-        else:
-            # Registrar localmente
-            print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
 
     def confirm_event(self, id: int, user_id: int, event_id: int) -> str:
         print(f"confirm_event {id} {self.id}")
@@ -355,18 +307,20 @@ class ChordNode:
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(CONFIRM_EVENT, f"{id}|{user_id}|{event_id}")
+                local_response = self.first_node.send_data_tcp(CONFIRM_EVENT, f"{id}|{user_id}|{event_id}")
+                return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
                 return self._confirm_event(user_id, event_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(CONFIRM_EVENT, f"{id}|{user_id}|{event_id}")
+                local_response = self.first_node.send_data_tcp(CONFIRM_EVENT, f"{id}|{user_id}|{event_id}")
+                return local_response.decode()
         else:
             print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(CONFIRM_EVENT, f"{id}|{user_id}|{event_id}")
-
+            local_response = self._closest_preceding_node(id).send_data_tcp(CONFIRM_EVENT, f"{id}|{user_id}|{event_id}")
+            return local_response.decode()
     def cancel_event(self, id: int, user_id: int, event_id: int) -> str:
         print(f"cancel_event {id} {self.id}")
         if id > self.actual_leader_id:
@@ -376,18 +330,20 @@ class ChordNode:
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(CANCEL_EVENT, f"{id}|{user_id}|{event_id}")
+                local_response = self.first_node.send_data_tcp(CANCEL_EVENT, f"{id}|{user_id}|{event_id}")
+                return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
                 return self._cancel_event(user_id, event_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(CANCEL_EVENT, f"{id}|{user_id}|{event_id}")
+                local_response = self.first_node.send_data_tcp(CANCEL_EVENT, f"{id}|{user_id}|{event_id}")
+                return local_response.decode()
         else:
             print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(CANCEL_EVENT, f"{id}|{user_id}|{event_id}")
-
+            local_response = self._closest_preceding_node(id).send_data_tcp(CANCEL_EVENT, f"{id}|{user_id}|{event_id}")
+            return local_response.decode()
     def list_events(self, id: int, user_id: int) -> str:
         print(f"list_events {id} {self.id}")
         if id > self.actual_leader_id:
@@ -397,40 +353,45 @@ class ChordNode:
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(LIST_EVENTS, f"{id}|{user_id}")
+                local_response = self.first_node.send_data_tcp(LIST_EVENTS, f"{id}|{user_id}")
+                return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
                 return self._list_events(user_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(LIST_EVENTS, f"{id}|{user_id}")
+                local_response = self.first_node.send_data_tcp(LIST_EVENTS, f"{id}|{user_id}")
+                return local_response.decode()
         else:
             print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(LIST_EVENTS, f"{id}|{user_id}")
+            local_response = self._closest_preceding_node(id).send_data_tcp(LIST_EVENTS, f"{id}|{user_id}")
+            return local_response.decode()
 
-    def list_events_pending(self, id: int, user_id: int) -> str:
+    def list_events_pending(self, id: int, user_name: str) -> str:
         print(f"list_events_pending {id} {self.id}")
         if id > self.actual_leader_id:
             if self.first:
                 print(
-                    f"voy a listar eventos pendientes de {user_id} yo con {self.id}")
-                return self._list_events_pending(user_id)
+                    f"voy a listar eventos pendientes de {user_name} yo con {self.id}")
+                return self._list_events_pending(user_name)
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(LIST_EVENTS_PENDING, f"{id}|{user_id}")
+                local_response = self.first_node.send_data_tcp(LIST_EVENTS_PENDING, f"{id}|{user_name}")
+                return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
-                return self._list_events_pending(user_id)
+                return self._list_events_pending(user_name)
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(LIST_EVENTS_PENDING, f"{id}|{user_id}")
+                local_response = self.first_node.send_data_tcp(LIST_EVENTS_PENDING, f"{id}|{user_name}")
+                return local_response.decode()
         else:
             print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(LIST_EVENTS_PENDING, f"{id}|{user_id}")
-
+            local_response = self._closest_preceding_node(id).send_data_tcp(LIST_EVENTS_PENDING, f"{id}|{user_name}")
+            return local_response.decode()
     def add_contact(self, id: int, user_id: int, contact_name: str, owner_id: int) -> str:
         print(f"add_contact {id} {self.id}")
         if id > self.actual_leader_id:
@@ -440,17 +401,20 @@ class ChordNode:
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(ADD_CONTACT, f"{id}|{user_id}|{contact_name}|{owner_id}")
+                local_response = self.first_node.send_data_tcp(ADD_CONTACT, f"{id}|{user_id}|{contact_name}|{owner_id}")
+                return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
                 return self._add_contact(user_id, contact_name, owner_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(ADD_CONTACT, f"{id}|{user_id}|{contact_name}|{owner_id}")
+                local_response = self.first_node.send_data_tcp(ADD_CONTACT, f"{id}|{user_id}|{contact_name}|{owner_id}")
+                return local_response.decode()
         else:
             print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(ADD_CONTACT, f"{id}|{user_id}|{contact_name}|{owner_id}")
+            local_response = self._closest_preceding_node(id).send_data_tcp(ADD_CONTACT, f"{id}|{user_id}|{contact_name}|{owner_id}")
+            return local_response.decode()
 
     def remove_contact(self, id: int, user_id: int, contact_id: int) -> str:
         print(f"remove_contact {id} {self.id}")
@@ -461,18 +425,20 @@ class ChordNode:
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(REMOVE_CONTACT, f"{id}|{user_id}|{contact_id}")
+                local_response = self.first_node.send_data_tcp(REMOVE_CONTACT, f"{id}|{user_id}|{contact_id}")
+                return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
                 return self._remove_contact(user_id, contact_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(REMOVE_CONTACT, f"{id}|{user_id}|{contact_id}")
+                local_response = self.first_node.send_data_tcp(REMOVE_CONTACT, f"{id}|{user_id}|{contact_id}")
+                return local_response.decode()
         else:
             print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(REMOVE_CONTACT, f"{id}|{user_id}|{contact_id}")
-
+            local_response = self._closest_preceding_node(id).send_data_tcp(REMOVE_CONTACT, f"{id}|{user_id}|{contact_id}")
+            return local_response.decode()
     def list_contacts(self, id: int, user_id: int) -> str:
         print(f"list_contacts {id} {self.id}")
         if id > self.actual_leader_id:
@@ -482,18 +448,20 @@ class ChordNode:
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(LIST_CONTACTS, f"{id}|{user_id}")
+                local_response = self.first_node.send_data_tcp(LIST_CONTACTS, f"{id}|{user_id}")
+                return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
                 return self._list_contacts(user_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(LIST_CONTACTS, f"{id}|{user_id}")
+                local_response = self.first_node.send_data_tcp(LIST_CONTACTS, f"{id}|{user_id}")
+                return local_response.decode()
         else:
             print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(LIST_CONTACTS, f"{id}|{user_id}")
-
+            local_response = self._closest_preceding_node(id).send_data_tcp(LIST_CONTACTS, f"{id}|{user_id}")
+            return local_response.decode()
     def create_group(self, id: int, owner_id: int, name: str) -> str:
         print(f"create_group {id} {self.id}")
         if id > self.actual_leader_id:
@@ -503,17 +471,20 @@ class ChordNode:
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(CREATE_GROUP, f"{id}|{owner_id}|{name}")
+                local_response = self.first_node.send_data_tcp(CREATE_GROUP, f"{id}|{owner_id}|{name}")
+                return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
                 return self._create_group(owner_id, name)
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(CREATE_GROUP, f"{id}|{owner_id}|{name}")
+                local_response = self.first_node.send_data_tcp(CREATE_GROUP, f"{id}|{owner_id}|{name}")
+                return local_response.decode()
         else:
             print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(CREATE_GROUP, f"{id}|{owner_id}|{name}")
+            local_response = self._closest_preceding_node(id).send_data_tcp(CREATE_GROUP, f"{id}|{owner_id}|{name}")
+            return local_response.decode()
 
     def delete_group(self, id: int, owner_id: int, name: str) -> str:
         print(f"delete_group {id} {self.id}")
@@ -524,17 +495,20 @@ class ChordNode:
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(DELETE_GROUP, f"{id}|{owner_id}|{name}")
+                local_response = self.first_node.send_data_tcp(DELETE_GROUP, f"{id}|{owner_id}|{name}")
+                return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
                 return self._delete_group(owner_id, name)
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(DELETE_GROUP, f"{id}|{owner_id}|{name}")
+                local_response = self.first_node.send_data_tcp(DELETE_GROUP, f"{id}|{owner_id}|{name}")
+                return local_response.decode()
         else:
             print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(DELETE_GROUP, f"{id}|{owner_id}|{name}")
+            local_response = self._closest_preceding_node(id).send_data_tcp(DELETE_GROUP, f"{id}|{owner_id}|{name}")
+            return local_response.decode()
 
     def leave_group(self, id: int, name: str, owner_id: int) -> str:
         print(f"leave_group {id} {self.id}")
@@ -545,17 +519,20 @@ class ChordNode:
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(LEAVE_GROUP, f"{id}|{name}|{owner_id}")
+                local_response = self.first_node.send_data_tcp(LEAVE_GROUP, f"{id}|{name}|{owner_id}")
+                return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
                 return self._leave_group(owner_id, name)
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(LEAVE_GROUP, f"{id}|{name}|{owner_id}")
+                local_response = self.first_node.send_data_tcp(LEAVE_GROUP, f"{id}|{name}|{owner_id}")
+                return local_response.decode()
         else:
             print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(LEAVE_GROUP, f"{id}|{name}|{owner_id}")
+            local_response = self._closest_preceding_node(id).send_data_tcp(LEAVE_GROUP, f"{id}|{name}|{owner_id}")
+            return local_response.decode()
 
     def add_member_to_group(self, id: int, group_id: int, user_id: int, role: str) -> str:
         print(f"add_member_to_group {id} {self.id}")
@@ -567,17 +544,20 @@ class ChordNode:
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(ADD_MEMBER, f"{id}|{group_id}|{user_id}|{role}")
+                local_response = self.first_node.send_data_tcp(ADD_MEMBER, f"{id}|{group_id}|{user_id}|{role}")
+                return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
                 return self._add_member_to_group(group_id, user_id, role)
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(ADD_MEMBER, f"{id}|{group_id}|{user_id}|{role}")
+                local_response = self.first_node.send_data_tcp(ADD_MEMBER, f"{id}|{group_id}|{user_id}|{role}")
+                return local_response.decode()
         else:
             print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(ADD_MEMBER, f"{id}|{group_id}|{user_id}|{role}")
+            local_response = self._closest_preceding_node(id).send_data_tcp(ADD_MEMBER, f"{id}|{group_id}|{user_id}|{role}")
+            return local_response.decode()
 
     def remove_member_from_group(self, id: int, group_id: int, user_id: int) -> str:
         print(f"remove_member_from_group {id} {self.id}")
@@ -589,17 +569,20 @@ class ChordNode:
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(REMOVE_MEMBER, f"{id}|{group_id}|{user_id}")
+                local_response = self.first_node.send_data_tcp(REMOVE_MEMBER, f"{id}|{group_id}|{user_id}")
+                return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
                 return self._remove_member_from_group(group_id, user_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(REMOVE_MEMBER, f"{id}|{group_id}|{user_id}")
+                local_response = self.first_node.send_data_tcp(REMOVE_MEMBER, f"{id}|{group_id}|{user_id}")
+                return local_response.decode()
         else:
             print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(REMOVE_MEMBER, f"{id}|{group_id}|{user_id}")
+            local_response = self._closest_preceding_node(id).send_data_tcp(REMOVE_MEMBER, f"{id}|{group_id}|{user_id}")
+            return local_response.decode()
 
     def list_group(self, id: int, user_id: int) -> str:
         print(f"list_group {id} {self.id}")
@@ -610,17 +593,20 @@ class ChordNode:
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(LIST_GROUPS, f"{id}|{user_id}")
+                local_response = self.first_node.send_data_tcp(LIST_GROUPS, f"{id}|{user_id}")
+                return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
                 return self._list_group(user_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(LIST_GROUPS, f"{id}|{user_id}")
+                local_response = self.first_node.send_data_tcp(LIST_GROUPS, f"{id}|{user_id}")
+                return local_response.decode()
         else:
             print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(LIST_GROUPS, f"{id}|{user_id}")
+            local_response = self._closest_preceding_node(id).send_data_tcp(LIST_GROUPS, f"{id}|{user_id}")
+            return local_response.decode()
 
     def list_member(self, id: int, user_id: int, group_id: int) -> str:
         print(f"list_member {id} {self.id}")
@@ -632,17 +618,20 @@ class ChordNode:
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(LIST_MEMBER, f"{id}|{user_id}|{group_id}")
+                local_response = self.first_node.send_data_tcp(LIST_MEMBER, f"{id}|{user_id}|{group_id}")
+                return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
                 return self._list_member(user_id, group_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(LIST_MEMBER, f"{id}|{user_id}|{group_id}")
+                local_response = self.first_node.send_data_tcp(LIST_MEMBER, f"{id}|{user_id}|{group_id}")
+                return local_response.decode()
         else:
             print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(LIST_MEMBER, f"{id}|{user_id}|{group_id}")
+            local_response = self._closest_preceding_node(id).send_data_tcp(LIST_MEMBER, f"{id}|{user_id}|{group_id}")
+            return local_response.decode()
 
     def list_personal_agenda(self, id: int, user_id: int) -> str:
         print(f"list_personal_agenda {id} {self.id}")
@@ -654,17 +643,20 @@ class ChordNode:
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(LIST_PERSONAL_AGENDA, f"{id}|{user_id}")
+                local_response = self.first_node.send_data_tcp(LIST_PERSONAL_AGENDA, f"{id}|{user_id}")
+                return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
                 return self._list_personal_agenda(user_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(LIST_PERSONAL_AGENDA, f"{id}|{user_id}")
+                local_response = self.first_node.send_data_tcp(LIST_PERSONAL_AGENDA, f"{id}|{user_id}")
+                return local_response.decode()
         else:
             print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(LIST_PERSONAL_AGENDA, f"{id}|{user_id}")
+            local_response = self._closest_preceding_node(id).send_data_tcp(LIST_PERSONAL_AGENDA, f"{id}|{user_id}")
+            return local_response.decode()
 
     def list_group_agenda(self, id: int, group_id: int) -> str:
         print(f"list_group_agenda {id} {self.id}")
@@ -676,17 +668,20 @@ class ChordNode:
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(LIST_GROUP_AGENDA, f"{id}|{group_id}")
+                local_response = self.first_node.send_data_tcp(LIST_GROUP_AGENDA, f"{id}|{group_id}")
+                return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
                 return self._list_group_agenda(group_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                return self.first_node.send_data_tcp(LIST_GROUP_AGENDA, f"{id}|{group_id}")
+                local_response = self.first_node.send_data_tcp(LIST_GROUP_AGENDA, f"{id}|{group_id}")
+                return local_response.decode()
         else:
             print("Voy a la finger table")
-            return self._closest_preceding_node(id).send_data_tcp(LIST_GROUP_AGENDA, f"{id}|{group_id}")
+            local_response = self._closest_preceding_node(id).send_data_tcp(LIST_GROUP_AGENDA, f"{id}|{group_id}")
+            return local_response.decode()
 
     # Funciones privadas (_)
 
@@ -702,7 +697,8 @@ class ChordNode:
         events = self.db.list_events(user_id)
         return "\n".join([str(event) for event in events])
 
-    def _list_events_pending(self, user_id: int) -> str:
+    def _list_events_pending(self, user_name: int) -> str:
+        user_id = self.db.getUserID(user_name)
         events = self.db.list_events_pending(user_id)
         return "\n".join([str(event) for event in events])
 
@@ -823,21 +819,23 @@ class ChordNode:
         elif option == CREATE_EVENT:
             # Crear un evento
             print(f"DATA: {data}")
-            event_id = int(data[1])
+            id = int(data[1])
             name = data[2]
             date = data[3]
-            privacy = data[4]
-            group_id = int(data[5]) if len(data) > 5 else None
+            owner = data[4]
+            privacy = data[5]
+            group_id = int(data[6]) if len(data) > 6 else None
             response = self.create_event(
-                event_id, name, date, privacy, group_id)
+                id, name, date,owner, privacy, group_id)
         elif option == CREATE_GROUP_EVENT:
             # Crear un evento
-            event_id = int(data[1])
+            id = int(data[1])
             name = data[2]
             date = data[3]
-            group_id = int(data[4]) if len(data) > 4 else None
+            owner = data[4]
+            group_id = int(data[5]) if len(data) > 5 else None
             response = self.create_group_event(
-                event_id, name, date, group_id)
+                event_id, name, date,owner, group_id)
         elif option == CREATE_INDIVIDUAL_EVENT:
             # Crear un evento
             event_id = int(data[1])
@@ -912,95 +910,7 @@ class ChordNode:
             password = data[4]
             # Procesar el registro
             response = self.register(id, name, email, password)
-        elif option == LOGIN:
-            # Iniciar sesión
-            id = data[1]
-            email = data[2]
-            password = data[3]
-            response = self.login_user(id, email, password)
-        elif option == CREATE_EVENT:
-            # Crear un evento
-            print(f"DATA: {data}")
-            event_id = int(data[1])
-            name = data[2]
-            date = data[3]
-            privacy = data[4]
-            group_id = int(data[5]) if len(data) > 5 else None
-            response = self.create_event(
-                event_id, name, date, privacy, group_id)
-        elif option == CREATE_GROUP_EVENT:
-            # Crear un evento
-            event_id = int(data[1])
-            name = data[2]
-            date = data[3]
-            group_id = int(data[4]) if len(data) > 4 else None
-            response = self.create_group_event(event_id, name, date, group_id)
-        elif option == CREATE_INDIVIDUAL_EVENT:
-            # Crear un evento
-            event_id = int(data[1])
-            name = data[2]
-            date = data[3]
-            group_id = int(data[4]) if len(data) > 4 else None
-            response = self.create_individual_event(
-                event_id, name, date, group_id)
-        elif option == CONFIRM_EVENT:
-            # Confirmar un evento
-            event_id = int(data[1])
-            response = self.confirm_event(event_id)
-        elif option == CANCEL_EVENT:
-            # Cancelar un evento
-            event_id = int(data[1])
-            response = self.cancel_event(event_id)
-        elif option == LIST_EVENTS:
-            # Listar eventos de un usuario
-            id = int(data[1])
-            user_id = int(data[2])
-            response = self.list_events(id, user_id)
-        elif option == LIST_EVENTS_PENDING:
-            # Listar eventos de un usuario
-            user_id = int(data[1])
-            response = self.list_events_pending(user_id)
-        elif option == ADD_CONTACT:
-            # Agregar un contacto
-            user_id = int(data[1])
-            contact_name = data[2]
-            response = self.add_contact(user_id, contact_name)
-        elif option == REMOVE_CONTACT:
-            # Eliminar un contacto
-            user_id = int(data[1])
-            contact_name = data[2]
-            response = self.remove_contact(user_id, contact_name)
-        elif option == LIST_CONTACTS:
-            # Listar contactos de un usuario
-            user_id = int(data[1])
-            response = self.list_contacts(user_id)
-        elif option == CREATE_GROUP:
-            # Crear un grupo
-            name = data[1]
-            owner_id = int(data[2])
-            response = self.create_group(owner_id, name)
-        elif option == DELETE_GROUP:
-            # Crear un grupo
-            name = data[1]
-            owner_id = int(data[2])
-            response = self.delete_group(owner_id, name)
-        elif option == LEAVE_GROUP:
-            # Crear un grupo
-            name = data[1]
-            owner_id = int(data[2])
-            response = self.leave_group(owner_id, name)
-        elif option == ADD_MEMBER:
-            # Agregar un miembro a un grupo
-            id = int(data[1])
-            group_id = int(data[2])
-            user_id = int(data[3])
-            response = self.add_member_to_group(id, group_id, user_id)
-        elif option == REMOVE_MEMBER:
-            # Agregar un miembro a un grupo
-            id = int(data[1])
-            group_id = int(data[2])
-            user_id = int(data[3])
-            response = self.remove_member_from_group(id, group_id, user_id)
+        
         elif option == LIST_GROUPS:
             # Listar grupos de un usuario
             user_id = int(data[1])

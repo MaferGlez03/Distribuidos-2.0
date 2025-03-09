@@ -1,8 +1,9 @@
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DateTime, Enum
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DateTime, Enum, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy import func 
 
 # Configurar la base de datos SQLite
 engine = create_engine('sqlite:///agenda.db', echo=False)  # echo=True para ver las consultas SQL en la consola
@@ -16,6 +17,7 @@ class UserAgenda(Base):
     event_id = Column(Integer, ForeignKey('events.id'), nullable=False)
     user = relationship('User', back_populates='agenda')
     event = relationship('Event', back_populates='agenda_users')
+
 class User(Base):
     __tablename__ = 'users'
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -38,6 +40,13 @@ class User(Base):
         Verifica si la contraseña es correcta.
         """
         return check_password_hash(self.password_hash, password)
+    def normalize_name(self, name: str) -> str:
+        """
+        Normaliza el nombre para evitar duplicados.
+        - Convierte a minúsculas.
+        - Elimina espacios al principio y al final.
+        """
+        return name.lower().strip()
 
 class Contact(Base):
     __tablename__ = 'contacts'
@@ -97,14 +106,37 @@ class Database:
         """
         self.session.close()
 
-    # Métodos para usuarios
+
+    def normalize_name(self, name: str) -> str:
+        """
+        Normaliza el nombre para evitar duplicados.
+        - Convierte a minúsculas.
+        - Elimina espacios al principio y al final.
+        """
+        return name.lower().strip()
+
     def register_user(self, name: str, email: str, password: str):
         """
         Registra un nuevo usuario con contraseña segura.
+        Verifica que el nombre no esté duplicado (ignorando mayúsculas, minúsculas y espacios).
         """
+        normalized_name = self.normalize_name(name)
+
+        # Verificar si ya existe un usuario con el mismo nombre normalizado
+        existing_user = (
+            self.session.query(User)
+            .filter(func.lower(func.trim(User.name)) == normalized_name)
+            .first()
+        )
+
+        if existing_user:
+            return (False, None)  # El nombre ya está registrado
+
+        # Crear y registrar el nuevo usuario
         user = User(name=name, email=email)
         user.set_password(password)
         self.session.add(user)
+
         try:
             self.session.commit()
             return (True, {'id': user.id, 'name': user.name})
@@ -167,11 +199,12 @@ class Database:
             owner_id=owner_id,
             privacy=privacy,
             group_id=group_id,
-            status='pending'
+            status='confirmed'
         )
         self.session.add(event)
         try:
             self.session.commit()
+            self._add_event_to_agenda(owner_id, event.id)
             return True
         except:
             self.session.rollback()
@@ -207,23 +240,6 @@ class Database:
 
         return True
 
-    def create_individual_event(self, name: str, date: str, owner_id: int, contact_id: int) -> bool:
-        """
-        Crea un evento individual con un contacto.
-        """
-        event = Event(
-            name=name,
-            date=datetime.strptime(date, '%Y-%m-%d'),
-            owner_id=owner_id,
-            privacy='private',
-            status='pending'
-        )
-        self.session.add(event)
-        self.session.commit()
-
-        # Añadir el evento a la agenda del contacto
-        self._add_event_to_agenda(contact_id, event.id)
-        return True
 
     def confirm_event(self, event_id: int) -> bool:
         """
