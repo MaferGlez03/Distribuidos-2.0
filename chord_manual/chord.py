@@ -95,7 +95,7 @@ class NodeReference:
 
     def send_data_tcp(self, op, data):
         try:
-            context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+            context = ssl.create_default_context(ssl.PROTOCOL_TLS_SERVER)
             context.check_hostname = False  # Desactivar verificación del hostname
             context.verify_mode = ssl.CERT_NONE
 
@@ -1087,7 +1087,7 @@ class ChordNode:
                     print("Voy a tratar de conectar")
                     with socket.create_connection((self.predecessor.ip, self.predecessor.port)) as s:
                         # Configurar SSL para la conexión con el predecesor
-                        context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+                        context = ssl.create_default_context(ssl.PROTOCOL_TLS_SERVER)
                         context.check_hostname = False  # Desactivar verificación del hostname
                         context.verify_mode = ssl.CERT_NONE
 
@@ -1123,7 +1123,7 @@ class ChordNode:
                             # seguimos el mismo proceso
                             with socket.create_connection((ip_pred_pred, TCP_PORT)) as s:
                                 # Configurar SSL para la conexión con el predecesor del predecesor
-                                context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+                                context = ssl.create_default_context(ssl.PROTOCOL_TLS_SERVER)
                                 context.check_hostname = False  # Desactivar verificación del hostname
                                 context.verify_mode = ssl.CERT_NONE
 
