@@ -1,0 +1,210 @@
+version: '3.8'
+
+networks:
+  clients:
+    driver: bridge
+    name: clients
+    ipam:
+      config:
+        - subnet: 10.0.10.0/24
+  servers:
+    driver: bridge
+    name: servers
+    ipam:
+      config:
+        - subnet: 10.0.11.0/24
+
+services:
+  router:
+    build:
+      context: "./Router"
+      dockerfile: "./Dockerfile"
+    container_name: router
+    networks:
+      clients:
+        ipv4_address: 10.0.10.254
+      servers:
+        ipv4_address: 10.0.11.254
+    cap_add:
+      - NET_ADMIN
+    restart: always 
+
+  server1:
+    build: "./Server"
+    image: server
+    container_name: server1
+    networks:
+      servers:
+        ipv4_address: 10.0.11.2
+    volumes:
+      - "./Server:/app"
+      - "./data/server1:/data"
+    cap_add:
+      - NET_ADMIN
+    command: python3 main.py  
+
+  server2:
+    build: "./Server"
+    image: server
+    container_name: server2
+    networks:
+      servers:
+        ipv4_address: 10.0.11.3
+    volumes:
+      - "./Server:/app"
+      - "./data/server2:/data"
+    cap_add:
+      - NET_ADMIN
+    command: python3 main.py  
+
+  server3:
+    build: "./Server"
+    image: server
+    container_name: server3
+    networks:
+      servers:
+        ipv4_address: 10.0.11.4
+    volumes:
+      - "./Server:/app"
+      - "./data/server3:/data"
+    cap_add:
+      - NET_ADMIN
+    command: python3 main.py  
+
+  server4:
+    build: "./Server"
+    image: server
+    container_name: server4
+    networks:
+      servers:
+        ipv4_address: 10.0.11.5
+    volumes:
+      - "./Server:/app"
+      - "./data/server4:/data"
+    cap_add:
+      - NET_ADMIN
+    command: python3 main.py  
+
+  server5:
+    build: "./Server"
+    image: server
+    container_name: server5
+    networks:
+      servers:
+        ipv4_address: 10.0.11.6
+    volumes:
+      - "./Server:/app"
+      - "./data/server5:/data"
+    cap_add:
+      - NET_ADMIN
+    command: python3 main.py  
+
+  # 🔵 Cliente en servers
+  client1:
+    build: "./Client"
+    image: client
+    container_name: client1
+    networks:
+      servers:
+        ipv4_address: 10.0.11.25
+    volumes:
+      - "./Client:/app"
+    command: python3 client.py
+    stdin_open: true   
+    tty: true 
+    cap_add:
+      - NET_ADMIN       
+
+  # 🔵 Cliente en clients (con conexión a servers vía router)
+  client2:
+    build: "./Client"
+    image: client
+    container_name: client2
+    networks:
+      clients:
+        ipv4_address: 10.0.10.22
+    volumes:
+      - "./Client:/app"
+    command: python3 client.py 10.0.11.2
+    stdin_open: true   
+    tty: true
+    cap_add:
+      - NET_ADMIN
+
+
+
+
+
+
+
+
+# networks:
+#   clients:
+#     ipam:
+#       config:
+#         - subnet: 10.0.10.0/24
+#   servers:
+#     ipam:
+#       config:
+#         - subnet: 10.0.11.0/24
+
+# services:
+#   server1:
+#     build:
+#       context: ./Server
+#       dockerfile: Dockerfile
+#     container_name: server1
+#     networks:
+#       servers:
+#         ipv4_address: 10.0.11.10
+#     volumes:
+#       - ./Server:/app
+#     restart: always
+
+#   server2:
+#     build:
+#       context: ./Server
+#       dockerfile: Dockerfile
+#     container_name: server2
+#     networks:
+#       servers:
+#         ipv4_address: 10.0.11.11
+#     volumes:
+#       - ./Server:/app
+#     restart: always
+
+#   server3:
+#     build:
+#       context: ./Server
+#       dockerfile: Dockerfile
+#     container_name: server3
+#     networks:
+#       servers:
+#         ipv4_address: 10.0.11.12
+#     volumes:
+#       - ./Server:/app
+#     restart: always
+
+#   client:
+#     build:
+#       context: ./Client
+#       dockerfile: Dockerfile
+#     container_name: client
+#     networks:
+#       clients:
+#         ipv4_address: 10.0.10.10
+#     volumes:
+#       - ./Client:/app
+#     restart: always
+
+#   router:
+#     build:
+#       context: ./router
+#       dockerfile: router.Dockerfile
+#     container_name: router
+#     networks:
+#       clients:
+#         ipv4_address: 10.0.10.254
+#       servers:
+#         ipv4_address: 10.0.11.254
+#     restart: always

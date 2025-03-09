@@ -63,7 +63,7 @@ REMOVE_MEMBER = 'remove_member'
 LIST_GROUPS = 'list_groups'
 CREATE_EVENT = 'create_event'
 CREATE_GROUP_EVENT = 'create_group_event'
-CREATE_INDIVIDUAL_EVENT ='create_individual_event'
+CREATE_INDIVIDUAL_EVENT = 'create_individual_event'
 CONFIRM_EVENT = 'confirm_event'
 CANCEL_EVENT = 'cancel_event'
 LIST_EVENTS = 'list_events'
@@ -94,18 +94,18 @@ class NodeReference:
         return ret
 
     def send_data_tcp(self, op, data):
-     try:
-         context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-         context.check_hostname = False  # Desactivar verificación del hostname
-         context.verify_mode = ssl.CERT_NONE 
- 
-         with socket.create_connection((self.ip, self.port)) as s:
-             with context.wrap_socket(s, server_hostname=self.ip) as secure_sock:
-                 secure_sock.sendall(f'{op}|{data}'.encode('utf-8'))
-                 return secure_sock.recv(1024)  # Recibir respuesta
-     except Exception as e:
-         print(f"❌ Error en send_data_tcp: {e}")
-         return False
+        try:
+            context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+            context.check_hostname = False  # Desactivar verificación del hostname
+            context.verify_mode = ssl.CERT_NONE
+
+            with socket.create_connection((self.ip, self.port)) as s:
+                with context.wrap_socket(s, server_hostname=self.ip) as secure_sock:
+                    secure_sock.sendall(f'{op}|{data}'.encode('utf-8'))
+                    return secure_sock.recv(1024)  # Recibir respuesta
+        except Exception as e:
+            print(f"❌ Error en send_data_tcp: {e}")
+            return False
 
 
 class ChordNode:
@@ -121,7 +121,7 @@ class ChordNode:
         self.finger_table = self.create_finger_table()
         self.leader = False
         self.first = False
-        self.repli_pred = '' # Lista de nodos caidos que son mi responsabilidad
+        self.repli_pred = ''  # Lista de nodos caidos que son mi responsabilidad
         self.repli_pred_pred = ''
         self.actual_first_id = self.id
         self.actual_leader_id = self.id
@@ -166,7 +166,8 @@ class ChordNode:
             # Registrar localmente
             print("Voy a la finger table")
             return self._closest_preceding_node(id).send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
-#region DB
+# region DB
+
     def _register(self, id: int, name: str, email: str, password: str) -> str:
 
         success = self.db.register_user(name, email, password)
@@ -226,7 +227,7 @@ class ChordNode:
     def _create_event(self, event_id: int, name: str, date: str, privacy: str, group_id=None) -> str:
 
         success = self.db.create_event(
-                name, date, event_id, privacy, group_id)
+            name, date, event_id, privacy, group_id)
         print(success)
         return f"Event created: {name}" if success else f"Failed to create event {name}"
 
@@ -257,7 +258,7 @@ class ChordNode:
     def _create_group_event(self, event_id: int, name: str, date: str, group_id=None) -> str:
 
         success = self.db.create_group_event(
-                name, date, event_id, group_id)
+            name, date, event_id, group_id)
         print(success)
         return f"Event created: {name}" if success else f"Failed to create event {name}"
 
@@ -285,10 +286,10 @@ class ChordNode:
             print("Voy a la finger table")
             return self._closest_preceding_node(id).send_data_tcp(CREATE_INDIVIDUAL_EVENT, f'{event_id}|{name}|{date}|{group_id}')
 
-    def  _create_individual_event(self, event_id: int, name: str, date: str, group_id=None) -> str:
+    def _create_individual_event(self, event_id: int, name: str, date: str, group_id=None) -> str:
 
         success = self.db.create_individual_event(
-                name, date, event_id, group_id)
+            name, date, event_id, group_id)
         return f"Event created: {name}" if success else f"Failed to create event {name}"
 
     def register(self, id: int, name: str, email: str, password: str) -> str:
@@ -315,7 +316,6 @@ class ChordNode:
             print("Voy a la finger table")
             return self._closest_preceding_node(id).send_data_tcp(REGISTER, f"{id}|{name}|{email}|{password}")
 
-  
     def confirm_event(self, id: int, user_id: int, event_id: int) -> str:
         print(f"confirm_event {id} {self.id}")
         if id > self.actual_leader_id:
@@ -383,7 +383,8 @@ class ChordNode:
         print(f"list_events_pending {id} {self.id}")
         if id > self.actual_leader_id:
             if self.first:
-                print(f"voy a listar eventos pendientes de {user_id} yo con {self.id}")
+                print(
+                    f"voy a listar eventos pendientes de {user_id} yo con {self.id}")
                 return self._list_events_pending(user_id)
             else:
                 self.find_first()
@@ -530,7 +531,8 @@ class ChordNode:
         print(f"add_member_to_group {id} {self.id}")
         if id > self.actual_leader_id:
             if self.first:
-                print(f"voy a añadir miembro {user_id} al grupo {group_id} yo con {self.id}")
+                print(
+                    f"voy a añadir miembro {user_id} al grupo {group_id} yo con {self.id}")
                 return self._add_member_to_group(group_id, user_id, role)
             else:
                 self.find_first()
@@ -551,7 +553,8 @@ class ChordNode:
         print(f"remove_member_from_group {id} {self.id}")
         if id > self.actual_leader_id:
             if self.first:
-                print(f"voy a eliminar miembro {user_id} del grupo {group_id} yo con {self.id}")
+                print(
+                    f"voy a eliminar miembro {user_id} del grupo {group_id} yo con {self.id}")
                 return self._remove_member_from_group(group_id, user_id)
             else:
                 self.find_first()
@@ -593,7 +596,8 @@ class ChordNode:
         print(f"list_member {id} {self.id}")
         if id > self.actual_leader_id:
             if self.first:
-                print(f"voy a listar miembros del grupo {group_id} yo con {self.id}")
+                print(
+                    f"voy a listar miembros del grupo {group_id} yo con {self.id}")
                 return self._list_member(user_id, group_id)
             else:
                 self.find_first()
@@ -614,7 +618,8 @@ class ChordNode:
         print(f"list_personal_agenda {id} {self.id}")
         if id > self.actual_leader_id:
             if self.first:
-                print(f"voy a listar agenda personal de {user_id} yo con {self.id}")
+                print(
+                    f"voy a listar agenda personal de {user_id} yo con {self.id}")
                 return self._list_personal_agenda(user_id)
             else:
                 self.find_first()
@@ -635,7 +640,8 @@ class ChordNode:
         print(f"list_group_agenda {id} {self.id}")
         if id > self.actual_leader_id:
             if self.first:
-                print(f"voy a listar agenda del grupo {group_id} yo con {self.id}")
+                print(
+                    f"voy a listar agenda del grupo {group_id} yo con {self.id}")
                 return self._list_group_agenda(group_id)
             else:
                 self.find_first()
@@ -718,13 +724,14 @@ class ChordNode:
     def _list_group_agenda(self, group_id: int) -> str:
         agenda = self.db.list_group_agenda(group_id)
         return "\n".join(agenda)
-#endregion
+# endregion
 # region CHORD
+
     def start_tcp_server(self):
         """Iniciar el servidor TCP con SSL."""
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        context.load_cert_chain(certfile="/app/chord_dht/certificate.pem", keyfile="/app/chord_dht/private_key.pem")
-
+        context.load_cert_chain(
+            certfile="/app/certificate.pem", keyfile="/app/private_key.pem")
 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -736,7 +743,11 @@ class ChordNode:
             with context.wrap_socket(s, server_side=True) as secure_socket:
                 while True:
                     conn, addr = secure_socket.accept()
-                    client = threading.Thread(target=self._handle_client_tcp, args=(conn, addr))
+                    print(f"🔵 Conexión aceptada desde {addr}")
+                    # Envía una respuesta al cliente
+                    #conn.sendall(b"Servidor activo\n")
+                    client = threading.Thread(
+                    target=self._handle_client_tcp, args=(conn, addr))
                     client.start()
 
     def _handle_client_tcp(self, conn: socket.socket, addr: tuple):
@@ -960,15 +971,16 @@ class ChordNode:
             response = self.list_group_agenda(group_id)
         elif option == REQUEST_DATA:
             id = int(data[1])
-            response = self.handler_data.data(False, id)
+            response = ""
+            #self.handler_data.data(False, id)
 
         elif option == CHECK_PREDECESSOR:
             # !AQUI EL OBJETIVO ES OBTENE LA DATA DE MI PREDECESOR
-            response = (self.handler_data.data(False) + self.predecessor.ip)
-
+            response = (f'0|' + self.predecessor.ip)
+            #self.handler_data.data(False)
             # si somos al menos 3 nodos, le mando a mi sucesor la data de mi predecesor
             if self.predecessor.id != self.successor.id:
-               self.successor.send_data_tcp(DATA_PRED, self.repli_pred)
+                self.successor.send_data_tcp(DATA_PRED, self.repli_pred)
 
         elif option == DATA_PRED:
             data_ = data[1]
@@ -1018,7 +1030,7 @@ class ChordNode:
             for e in self.succ_list:
                 st1 += f'{e.ip}|'
             response = st1[:-1]
-        
+
         elif option == UPDATE_SUCC_LIST:
             # Para cuando se cae un nodo
             print(f"DATA-SUCC$: {data}")
@@ -1032,7 +1044,7 @@ class ChordNode:
             for e in self.pred_list:
                 st1 += f'{e.ip}|'
             response = st1[1:]
-        
+
         elif option == UPDATE_PRED_LIST:
             # Para cuando se cae un nodo
             print(f"DATA-PRED$: {data}")
@@ -1078,9 +1090,10 @@ class ChordNode:
                     print("Voy a tratar de conectar")
                     with socket.create_connection((self.predecessor.ip, self.predecessor.port)) as s:
                         # Configurar SSL para la conexión con el predecesor
-                        context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+                        context = ssl.create_default_context(
+                            ssl.Purpose.SERVER_AUTH)
                         context.check_hostname = False  # Desactivar verificación del hostname
-                        context.verify_mode = ssl.CERT_NONE 
+                        context.verify_mode = ssl.CERT_NONE
 
                         with context.wrap_socket(s, server_hostname=self.predecessor.ip) as secure_sock:
                             # Configuramos el socket para lanzar un error si no recibe respuesta en 10 segundos
@@ -1096,67 +1109,84 @@ class ChordNode:
                             # Guardamos el id del predecesor de nuestro predecesor
                             ip_pred_pred = self.repli_pred.split('|')[-1]
                 except:
-                    print(f"El servidor {self.predecessor.ip} se ha desconectado")
+                    print(
+                        f"El servidor {self.predecessor.ip} se ha desconectado")
                     # self.update_repli_list(self.predecessor.id)
-                    #replicar la info del predecesor que se cayó
-                    self.handler_data.create(self.repli_pred)
-                    #actualizar el first y el leader
+                    # replicar la info del predecesor que se cayó
+                    #self.handler_data.create(self.repli_pred)
+                    # actualizar el first y el leader
                     if self.first:
-                        self.send_data_broadcast(UPDATE_LEADER, f"{self.generate_id_(ip_pred_pred)}|{TCP_PORT}|{self.predecessor.id}")
+                        self.send_data_broadcast(
+                            UPDATE_LEADER, f"{self.generate_id_(ip_pred_pred)}|{TCP_PORT}|{self.predecessor.id}")
                         time.sleep(2)
                     elif self.actual_first_id == self.predecessor.id:
-                        self.send_data_broadcast(UPDATE_FIRST,f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
+                        self.send_data_broadcast(
+                            UPDATE_FIRST, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
                         time.sleep(2)
-                    #actualizar la finger table
-                    self.send_data_broadcast(UPDATE_FINGER, f"{self.predecessor.id}|{self.ip}|{TCP_PORT}")
+                    # actualizar la finger table
+                    self.send_data_broadcast(
+                        UPDATE_FINGER, f"{self.predecessor.id}|{self.ip}|{TCP_PORT}")
                     if self.predecessor.id != self.successor.id:  # somos al menos 3
                         try:
                             # tratamos de conectarnos con el predecesor de nuestro predecesor para comunicarle que se cayo su sucesor
                             # seguimos el mismo proceso
                             with socket.create_connection((ip_pred_pred, TCP_PORT)) as s:
                                 # Configurar SSL para la conexión con el predecesor del predecesor
-                                context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+                                context = ssl.create_default_context(
+                                    ssl.Purpose.SERVER_AUTH)
                                 context.check_hostname = False  # Desactivar verificación del hostname
-                                context.verify_mode = ssl.CERT_NONE 
-                            
+                                context.verify_mode = ssl.CERT_NONE
+
                                 with context.wrap_socket(s, server_hostname=ip_pred_pred) as secure_sock:
-                                    secure_sock.settimeout(10)  # Configurar timeout
-                                    secure_sock.sendall(f'{FALL_SUCC}|{self.ip}|{self.tcp_port}'.encode('utf-8'))
-                                    secure_sock.recv(1024).decode()  # Esperar respuesta
+                                    # Configurar timeout
+                                    secure_sock.settimeout(10)
+                                    secure_sock.sendall(
+                                        f'{FALL_SUCC}|{self.ip}|{self.tcp_port}'.encode('utf-8'))
+                                    # Esperar respuesta
+                                    secure_sock.recv(1024).decode()
                                 # print(self.predecessor.id)
                                 # print(self.successor.id)
                             # Iniciar actualizaciones de listas de sucesores a partir del predecesor del predecesor
-                            #time.sleep(5)
-                            #threading.Thread(target=NodeReference(ip_pred_pred, self.tcp_port).send_data_tcp, args=(UPDATE_SUCC_LIST, f'$')).start()
-                            #time.sleep(5)
-                            #threading.Thread(target=NodeReference(self.ip, self.tcp_port).send_data_tcp, args=(UPDATE_PRED_LIST, f'$')).start()
+                            # time.sleep(5)
+                            # threading.Thread(target=NodeReference(ip_pred_pred, self.tcp_port).send_data_tcp, args=(UPDATE_SUCC_LIST, f'$')).start()
+                            # time.sleep(5)
+                            # threading.Thread(target=NodeReference(self.ip, self.tcp_port).send_data_tcp, args=(UPDATE_PRED_LIST, f'$')).start()
                             # self.update_repli_list(self.predecessor.id)
                         except:
-                            print(f"El servidor {ip_pred_pred} se ha desconectado tambien")
+                            print(
+                                f"El servidor {ip_pred_pred} se ha desconectado tambien")
                             # self.update_repli_list(self.generate_id(ip_pred_pred))
-                            #replicar data
-                            self.handler_data.create(self.repli_pred_pred)
+                            # replicar data
+                            #self.handler_data.create(self.repli_pred_pred)
                             if ip_pred_pred != self.successor.ip:
                                 if self.generate_id_(ip_pred_pred) == self.actual_first_id:
                                     self.send_data_broadcast(
                                         UPDATE_FIRST, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
                                 time.sleep(2)
-                                self.send_data_broadcast(NOTIFY, f"{self.generate_id_(ip_pred_pred)}")
+                                self.send_data_broadcast(
+                                    NOTIFY, f"{self.generate_id_(ip_pred_pred)}")
                                 print(f"Solo eramos tres nodos me reinicio")
-                                self.send_data_broadcast(UPDATE_FIRST, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
-                                self.send_data_broadcast(UPDATE_LEADER, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
-                                self.predecessor = NodeReference(self.ip, self.tcp_port)
-                                self.successor = NodeReference(self.ip, self.tcp_port)
+                                self.send_data_broadcast(
+                                    UPDATE_FIRST, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
+                                self.send_data_broadcast(
+                                    UPDATE_LEADER, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
+                                self.predecessor = NodeReference(
+                                    self.ip, self.tcp_port)
+                                self.successor = NodeReference(
+                                    self.ip, self.tcp_port)
                                 self.finger_table = self.create_finger_table()
 
                     else:
                         print(f"Solo eramos dos nodos me reinicio")
-                        self.send_data_broadcast(UPDATE_FIRST, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
-                        self.send_data_broadcast(UPDATE_LEADER, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
-                        self.predecessor = NodeReference(self.ip, self.tcp_port)
+                        self.send_data_broadcast(
+                            UPDATE_FIRST, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
+                        self.send_data_broadcast(
+                            UPDATE_LEADER, f"{self.id}|{TCP_PORT}|{self.predecessor.id}")
+                        self.predecessor = NodeReference(
+                            self.ip, self.tcp_port)
                         self.successor = NodeReference(self.ip, self.tcp_port)
                         self.finger_table = self.create_finger_table()
-                
+
                 # self.replicate()
                 time.sleep(5)
 
@@ -1477,10 +1507,9 @@ class ChordNode:
         self.request_leader()
         time.sleep(5)
         self.send_data_broadcast(FIX_FINGER, f'0|0')
-        data = self.successor.send_data_tcp(REQUEST_DATA, self.id).decode()
-        self.handler_data.create(data)
-        self.handler_data.data(True, self.predecessor.id)
-
+        #data = self.successor.send_data_tcp(REQUEST_DATA, self.id).decode()
+        #self.handler_data.create(data)
+        #self.handler_data.data(True, self.predecessor.id)
 
     def create_finger_table(self):
         table = {}
@@ -1556,12 +1585,16 @@ class ChordNode:
                     self.finger_table[finger_id] = node
 
     def print_finger_table(self):
-        print(f" Nodo: {self.id} FINGER TABLE. FIRST: {self.first}. LEADER: {self.leader}")
-        print(f"PREDECESOR: {self.predecessor.id} YO: {self.id} SUCESOR: {self.successor.id}")
-        print(f"ACTUAL FIRST: {self.actual_first_id} | ACTUAL LEADER: {self.actual_leader_id}")
+        print(
+            f" Nodo: {self.id} FINGER TABLE. FIRST: {self.first}. LEADER: {self.leader}")
+        print(
+            f"PREDECESOR: {self.predecessor.id} YO: {self.id} SUCESOR: {self.successor.id}")
+        print(
+            f"ACTUAL FIRST: {self.actual_first_id} | ACTUAL LEADER: {self.actual_leader_id}")
         for i in range(8):
             finger_id = (self.id + 2**i) % 256
-            print(f"id: {finger_id} |||| owner: {self.finger_table[finger_id].id} \n")
+            print(
+                f"id: {finger_id} |||| owner: {self.finger_table[finger_id].id} \n")
 
     def _closest_preceding_node(self, id) -> NodeReference:
         """Devuelve el nodo más cercano a un ID en la finger table."""
@@ -1681,31 +1714,22 @@ class ChordNode:
 
         return successor_list[:k]  # Retornar solo k nodos
 
-    def replicate(self):
-        # Replico mi data en mis sucesores
-        data = f'|$${self.handler_data.data(False, self.id)}'
-        for element in self.succ_list:
-            for id in self.repli_pred_list:
-            # Replico la data de los nodos caidos que son mi responsabilidad en mis sucesores
-                data += f'$${self.handler_data.data(False, id)}'
-            element.send_data_tcp(REPLICATE, f'{data}')
-    
-    def request_data(self):
-        pass
+
 
     def update_repli_list(self, id):
         print(f'REPLICANDO {id} EN {self.id}')
         self.repli_pred_list.append(id)
         for element in self.succ_list[:-1]:
             element.send_data_tcp(UPDATE_REPLI_LIST, id)
-    
+
     def get_succ_list(self, succ_list=None):
         if succ_list is None:
             # Obtiene la lista de sucesores del sucesor
-            succ_list = [NodeReference(e, self.tcp_port) for e in self.successor.send_data_tcp(LIST_SUCC, f'').decode().split('|')]
+            succ_list = [NodeReference(e, self.tcp_port) for e in self.successor.send_data_tcp(
+                LIST_SUCC, f'').decode().split('|')]
         else:
             succ_list = [NodeReference(e, self.tcp_port) for e in succ_list]
-        
+
         # Crea mi lista de sucesores con mi sucesor mas los primeros k-1 sucesores del sucesor
         self_succ_list = [self.successor]
         for i in range(0, PROPAGATION - 1):
@@ -1714,22 +1738,24 @@ class ChordNode:
         if self_succ_list == self.succ_list:
             return
         self.succ_list = self_succ_list
-        print(f"LISTA DE SUCESORES: {[element.id for element in self.succ_list]}")
+        print(
+            f"LISTA DE SUCESORES: {[element.id for element in self.succ_list]}")
         st1 = ''
         for e in self.succ_list:
             st1 += f'{e.ip}|'
         response = st1[:-1]
         # Mi predecesor actualiza su lista de sucesores conmigo
         self.predecessor.send_data_tcp(UPDATE_SUCC_LIST, response)
-    
+
     def get_pred_list(self, pred_list=None):
         print("@@ENTRO@@")
         if pred_list is None:
             # Obtiene la lista de sucesores del sucesor
-            pred_list = [NodeReference(e, self.tcp_port) for e in self.predecessor.send_data_tcp(LIST_PRED, f'').decode().split('|')]
+            pred_list = [NodeReference(e, self.tcp_port) for e in self.predecessor.send_data_tcp(
+                LIST_PRED, f'').decode().split('|')]
         else:
             pred_list = [NodeReference(e, self.tcp_port) for e in pred_list]
-        
+
         # Crea mi lista de predecesores los primeros k-1 predecesores del sucesor
         self_pred_list = [self.predecessor]
         for i in range(0, PROPAGATION - 1):
@@ -1738,15 +1764,14 @@ class ChordNode:
         if self_pred_list == self.pred_list:
             return
         self.pred_list = self_pred_list
-        print(f"LISTA DE PREDECESORES: {[element.id for element in self.pred_list]}")
+        print(
+            f"LISTA DE PREDECESORES: {[element.id for element in self.pred_list]}")
         st1 = ''
         for e in self.pred_list:
             st1 += f'{e.ip}|'
         response = st1[:-1]
         # Mi sucesor actualiza su lista de predecesores conmigo
         self.successor.send_data_tcp(UPDATE_PRED_LIST, response)
-
-
 
 
 if __name__ == "__main__":
