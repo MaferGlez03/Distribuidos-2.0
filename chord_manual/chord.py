@@ -693,7 +693,8 @@ class ChordNode:
         return "Event canceled" if success else "Failed to cancel event"
 
     def _list_events(self, user_id: int) -> str:
-        events = self.db.list_events(user_id)
+        real_id = self.db.getUserID(user_id)
+        events = self.db.list_events(real_id)
         return "\n".join([str(event) for event in events])
 
     def _list_events_pending(self, user_name: int) -> str:
