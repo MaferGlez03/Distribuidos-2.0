@@ -811,10 +811,10 @@ class ChordNode:
                 self.handler_data.create(datas)
         elif option == LOGIN:
             # Iniciar sesión
-            id = int(data[1])
-            email = data[2]
+            chord_id = int(data[1])
+            username = data[2]
             password = data[3]
-            response = self.login_user(id, email, password)
+            response = self.login_user(chord_id, username, password)
         elif option == CREATE_EVENT:
             # Crear un evento
             print(f"DATA: {data}")

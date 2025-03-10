@@ -177,7 +177,7 @@ if __name__ == "__main__":
             user_name = input("Ingrese su nombre: ")
             password = input("Ingrese su contraseña: ")
             id = generate_id_(user_name)
-            response = connect_to_server(server_ip, 8000, "log", f"{id}|{username}|{password}")
+            response = connect_to_server(server_ip, 8000, "log", f"{id}|{user_name}|{password}")
             if "logged" in response.lower():  # Suponiendo que el servidor devuelve "éxito" en caso de registro exitoso
                 chord_id = user_id
                 username= user_name# Actualizar chord_id con el ID del usuario registrado
