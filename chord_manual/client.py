@@ -139,8 +139,8 @@ if __name__ == "__main__":
             user_id = generate_id_(name)
             print(f"user_id: {user_id}")
             response = connect_to_server(server_ip, 8000, "reg", f"{user_id}|{name}|{email}|{password}")
-            if "éxito" in response.lower():  # Suponiendo que el servidor devuelve "éxito" en caso de registro exitoso
-                chord_id = user_id# Actualizar chord_id con el ID del usuario registrado
+            if "registered" in response.lower():  # Suponiendo que el servidor devuelve "éxito" en caso de registro exitoso
+                chord_id = user_id  # Actualizar chord_id con el ID del usuario registrado
             print(f"🔹 Respuesta del servidor: {response}")
 
         elif opcion == "2":

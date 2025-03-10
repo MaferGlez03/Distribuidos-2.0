@@ -343,7 +343,7 @@ class ChordNode:
             print("Voy a la finger table")
             local_response = self._closest_preceding_node(id).send_data_tcp(CANCEL_EVENT, f"{id}|{event_id}")
             return local_response.decode()
-    def list_events(self, id: int, user_id: int) -> str:
+    def list_events(self, id: int, user_id: str) -> str:
         print(f"list_events {id} {self.id}")
         if id > self.actual_leader_id:
             if self.first:
@@ -797,9 +797,9 @@ class ChordNode:
                 client.start()
 
     def _handle_client_tcp(self, conn: socket.socket, addr: tuple):
-        print(f"ADDR[0]: {addr[0]} | ADDR[1]: {addr[1]}")
         data = conn.recv(1024).decode().split('|')  # operation | id | port
         option = data[0]
+        print(f"ADDR[0]: {addr[0]} | ADDR[1]: {addr[1]} | OPERATION: {option} | DATA: {data}")
         if option == '':
             return
         id = data[1]
@@ -827,7 +827,8 @@ class ChordNode:
             date = data[3]
             owner = data[4]
             privacy = data[5]
-            group_id = int(data[6]) if len(data) > 6 else None
+            # group_id = int(data[6]) if len(data) > 6 else None
+            group_id = None
             response = self.create_event(
                 id, name, date,owner, privacy, group_id)
         elif option == CREATE_GROUP_EVENT:
@@ -859,7 +860,7 @@ class ChordNode:
         elif option == LIST_EVENTS:
             # Listar eventos de un usuario
             id = int(data[1])
-            user_id = int(data[2])
+            user_id = data[2]
             response = self.list_events(id, user_id)
         elif option == LIST_EVENTS_PENDING:
             # Listar eventos de un usuario

@@ -32,7 +32,7 @@ class HandleData:
         ).all()
         for user in users:
             user_id = self.set_id(user.email)  # Usamos el email para generar el ID
-            print(f"USUARIO: {user_id}")
+            print(f"USUARIO: {user_id} | DUEÑO: {self.id}")
             print(f"Numero de contactos: {len(user.contacts)}")
             print(f"Numero de eventos: {len(user.events)}")
             print(f"Numero de agendas: {len(user.agenda)}")
@@ -53,7 +53,7 @@ class HandleData:
                 # Añadir los miembros de grupos del usuario
                 for agenda in user.agenda:
                     result += 'agenda¡'
-                    result += f'{agenda.id}|{agenda.user_id}|{agenda.event_id}|{group.role}||'
+                    result += f'{agenda.id}|{agenda.user_id}|{agenda.event_id}||'
                 
                 # Añadir los grupos del usuario
                 for group in user.groups:
