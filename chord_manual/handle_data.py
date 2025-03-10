@@ -100,7 +100,8 @@ class HandleData:
                 # Procesar los datos del usuario
                 listica = [tabla.split('¡') for tabla in tablas]
                 print(f"listica: {listica}")
-                for titulo, info in [tabla.split('¡') for tabla in tablas]:
+                for titulo, content in [tabla.split('¡') for tabla in tablas]:
+                    info = content.split('|')
                     if titulo == 'events':
                         # Crear un evento
                         event_id = int(info[0])
@@ -108,7 +109,7 @@ class HandleData:
                         event_date = datetime.strptime(info[2], '%Y-%m-%d %H:%M:%S')
                         event_owner_id = int(info[3])
                         event_privacy = info[4]
-                        event_group_id = int(info[5])
+                        event_group_id = int(info[5]) if isinstance(info[5], str) and info[5].isdigit() else None
                         event_status = info[6]
                         
                         event = Event(

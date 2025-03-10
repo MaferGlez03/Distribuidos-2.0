@@ -949,14 +949,14 @@ class ChordNode:
 
         elif option == CHECK_PREDECESSOR:
             # !AQUI EL OBJETIVO ES OBTENER LA DATA DE MI PREDECESOR
-            response = (self.handler_data.data(False) + self.predecessor.ip)
+            response = (self.handler_data.data(False) + '|¡|' + self.predecessor.ip)
 
             # si somos al menos 3 nodos, le mando a mi sucesor la data de mi predecesor
             if self.predecessor.id != self.successor.id:
                 self.successor.send_data_tcp(DATA_PRED, self.repli_pred)
 
         elif option == DATA_PRED:
-            data_ = data[1]
+            data_ = '|'.join(data[1:])
             # !AQUI TAL VEZ HAY Q CAMBIAR LA LOGICA POR LA FORMA DE REPLICAR
             self.repli_pred_pred = data_
 
@@ -1055,7 +1055,8 @@ class ChordNode:
         while True:
             if self.predecessor.id != self.id:
                 print(f"PREDECESOR: {self.predecessor.id} YO: {self.id} SUCESOR: {self.successor.id}")
-                print("Somos diferentes")
+                print(f"DATA PRED: {self.repli_pred}")
+                print(f"DATA PRED PRED: {self.repli_pred_pred}")
 
                 try:
                     print("Voy a tratar de conectar")
@@ -1089,9 +1090,13 @@ class ChordNode:
                         # chequeamos que no se ha caido el predecesor
                         s.sendall(f'{op}|{data}'.encode('utf-8'))
                         # guardamos la info recibida
-                        self.pred_repli = s.recv(1024).decode()
+                        repli_pred = s.recv(1024).decode()
+                        self.repli_pred = repli_pred.split('|¡|')[0]
                         # guardamos el id del predecesor de nuestro predecesor
-                        ip_pred_pred = self.pred_repli.split('|')[-1]
+                        ip_pred_pred = repli_pred.split('|¡|')[1]
+                        print(f"repli_pred: {repli_pred}")
+                        print(f"self.repli_pred: {self.repli_pred}")
+                        print(f"ip_pred_pred: {ip_pred_pred}")
 
                 except:
                     print(f"El servidor {self.predecessor.ip} se ha desconectado")
