@@ -208,7 +208,7 @@ class ChordNode:
     def login_user(self, id: int, name: str, password: str) -> str:
         if id > self.actual_leader_id:
             if self.first:
-                return self._login_user(id, name, password)
+                return self._login_user(name, password)
             else:
                 self.find_first()
                 time.sleep(3)
@@ -217,7 +217,7 @@ class ChordNode:
 
         elif id < self.id:
             if id > self.predecessor.id or self.first:
-                return self._login_user(id, name, password)
+                return self._login_user( name, password)
             else:
                 # Reenviar al "first"
                 self.find_first()
@@ -815,10 +815,10 @@ class ChordNode:
                 self.handler_data.create(datas)
         elif option == LOGIN:
             # Iniciar sesión
-            id = data[1]
-            email = data[2]
+            id = int(data[1])
+            username = data[2]
             password = data[3]
-            response = self.login_user(id, email, password)
+            response = self.login_user(id, username, password)
         elif option == CREATE_EVENT:
             # Crear un evento
             print(f"DATA: {data}")
@@ -864,8 +864,9 @@ class ChordNode:
             response = self.list_events(id, user_id)
         elif option == LIST_EVENTS_PENDING:
             # Listar eventos de un usuario
-            user_id = int(data[1])
-            response = self.list_events_pending(user_id)
+            id = int(data[1])
+            user = data[1]
+            response = self.list_events_pending(id,user)
         elif option == ADD_CONTACT:
             # Agregar un contacto
             id = int(data[1])

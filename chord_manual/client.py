@@ -106,7 +106,7 @@ if __name__ == "__main__":
         print("10. Listar contactos")
         print("11. Crear grupo")
         print("12. Eliminar grupo")
-        print("13. Abandonar grupo")
+        print("13. Iniciar Sesion")
         print("14. Añadir miembro a grupo")
         print("15. Eliminar miembro de grupo")
         print("16. Listar grupos")
@@ -140,7 +140,8 @@ if __name__ == "__main__":
             print(f"user_id: {user_id}")
             response = connect_to_server(server_ip, 8000, "reg", f"{user_id}|{name}|{email}|{password}")
             if "registered" in response.lower():  # Suponiendo que el servidor devuelve "éxito" en caso de registro exitoso
-                chord_id = user_id  # Actualizar chord_id con el ID del usuario registrado
+                chord_id = user_id
+                username= name# Actualizar chord_id con el ID del usuario registrado
             print(f"🔹 Respuesta del servidor: {response}")
 
         elif opcion == "2":
@@ -181,7 +182,7 @@ if __name__ == "__main__":
 
             elif opcion == "7":
                 print("\n🔹 Listar Eventos Pendientes:")
-                response = connect_to_server(server_ip, 8000, "list_events_pending", chord_id)
+                response = connect_to_server(server_ip, 8000, "list_events_pending", f"{chord_id}|{username}")
                 print(f"🔹 Respuesta del servidor: {response}")
 
             elif opcion == "8":
@@ -215,9 +216,14 @@ if __name__ == "__main__":
                 print(f"🔹 Respuesta del servidor: {response}")
 
             elif opcion == "13":
-                print("\n🔹 Abandonar Grupo:")
-                group_name = input("Ingrese el nombre del grupo: ")
-                response = connect_to_server(server_ip, 8000, "leave_group", f"{chord_id}|{group_name}")
+                print("\n🔹 Iniciar Sesión:")
+                user_name = input("Ingrese su nombre: ")
+                password = input("Ingrese su contraseña: ")
+                id = generate_id_(user_name)
+                response = connect_to_server(server_ip, 8000, "log", f"{id}|{username}|{password}")
+                if "logged" in response.lower():  # Suponiendo que el servidor devuelve "éxito" en caso de registro exitoso
+                    chord_id = user_id
+                    username= user_name# Actualizar chord_id con el ID del usuario registrado
                 print(f"🔹 Respuesta del servidor: {response}")
 
             elif opcion == "14":
