@@ -44,7 +44,31 @@ def find_active_server(start_ip, end_ip, port, timeout=1):
 
     print("❌ No se encontró ningún servidor en el rango especificado.")
     return None  # No se encontró ningún servidor
-
+#  def send_data_tcp(self, op, data):
+#     try:
+#         # ✅ Crear socket base (TCP)
+#         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as raw_sock:
+#             raw_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+#             # ✅ Conectar al destino
+#             raw_sock.connect((self.ip, self.port))
+#             # ✅ Crear contexto SSL para cliente
+#             context = ssl.create_default_context()
+#             context.check_hostname = False
+#             context.verify_mode = ssl.CERT_NONE
+#             # ✅ Envolver la conexión con SSL
+#             with context.wrap_socket(raw_sock, server_hostname="MFSG") as ssl_sock:
+#                 print(f"🔒 Conexión SSL establecida con {self.ip}:{self.port}")
+#                 # ✅ Enviar datos
+#                 ssl_sock.sendall(f'{op}|{data}'.encode('utf-8'))
+#                 print(f"📤 Datos enviados: {op}|{data}")
+#                 # ✅ Recibir respuesta
+#                 response = ssl_sock.recv(1024)
+#                 print(f"📥 Respuesta recibida: {response.decode('utf-8')}")
+#                 return response
+#     except Exception as e:
+#         print(f"❌ Error en send_data_tcp: {e}")
+#         return b''
+        
 def connect_to_server(server_ip, server_port, operation, data):
     """Conecta al servidor Chord por TCP y envía una solicitud."""
     try:
