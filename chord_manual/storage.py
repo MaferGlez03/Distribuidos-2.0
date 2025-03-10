@@ -355,7 +355,7 @@ class Database:
         groups = self.session.query(GroupMember).filter(GroupMember.user_id == user_id).all()
 
         group_ids = [group.group_id for group in groups]
-        group_names = [self.session.query(Group).filter(Group.id == group_id).first().name for group_id in group_ids]
+        group_names = [group.name for group in [x for x in [self.session.query(Group).filter(Group.id == group_id).first() for group_id in group_ids] if x is not None]]
         final = list(zip(group_ids, group_names))
         return final
     

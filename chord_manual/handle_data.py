@@ -43,7 +43,7 @@ class HandleData:
                 # Añadir los eventos del usuario
                 for contact in user.contacts:
                     result += 'contacts¡'
-                    result += f'{contact.id}|{contact.user_id}|{contact.owner.id}|{contact.contact_name}||'
+                    result += f'{contact.id}|{contact.user_id}|{contact.owner_id}|{contact.contact_name}||'
                 
                 # Añadir los contactos del usuario
                 for event in user.events:
