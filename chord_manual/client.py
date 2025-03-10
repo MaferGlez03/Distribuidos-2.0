@@ -187,8 +187,8 @@ if __name__ == "__main__":
             elif opcion == "8":
                 print("\n🔹 Añadir Contacto:")
                 contact_name = input("Ingrese el nombre del contacto: ")
-                owner_id = input("Ingrese el ID del propietario: ")
-                response = connect_to_server(server_ip, 8000, "add_contact", f"{chord_id}|{contact_name}|{owner_id}")
+                user_id = input("Ingrese el ID del contacto: ")
+                response = connect_to_server(server_ip, 8000, "add_contact", f"{chord_id}|{user_id}|{contact_name}|{username}")
                 print(f"🔹 Respuesta del servidor: {response}")
 
             elif opcion == "9":
@@ -199,7 +199,7 @@ if __name__ == "__main__":
 
             elif opcion == "10":
                 print("\n🔹 Listar Contactos:")
-                response = connect_to_server(server_ip, 8000, "list_contacts", chord_id)
+                response = connect_to_server(server_ip, 8000, "list_contacts", f"{chord_id}|{username}")
                 print(f"🔹 Respuesta del servidor: {response}")
 
             elif opcion == "11":
@@ -248,13 +248,13 @@ if __name__ == "__main__":
 
             elif opcion == "18":
                 print("\n🔹 Listar Agenda Personal:")
-                response = connect_to_server(server_ip, 8000, "list_personal_agenda", chord_id)
+                response = connect_to_server(server_ip, 8000, "list_personal_agenda", f"{chord_id}|{username}")
                 print(f"🔹 Respuesta del servidor: {response}")
 
             elif opcion == "19":
                 print("\n🔹 Listar Agenda de Grupo:")
                 group_id = input("Ingrese el ID del grupo: ")
-                response = connect_to_server(server_ip, 8000, "list_group_agenda", group_id)
+                response = connect_to_server(server_ip, 8000, "list_group_agenda", f"{chord_id}|{group_id}|{username}")
                 print(f"🔹 Respuesta del servidor: {response}")
 
         else:

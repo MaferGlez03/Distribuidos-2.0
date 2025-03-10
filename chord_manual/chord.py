@@ -297,28 +297,28 @@ class ChordNode:
         print(success)
         return f"Event created: {name}" if success else f"Failed to create event {name}"
 
-    def confirm_event(self, id: int, user_id: int, event_id: int) -> str:
+    def confirm_event(self, id: int, event_id: int) -> str:
         print(f"confirm_event {id} {self.id}")
         if id > self.actual_leader_id:
             if self.first:
                 print(f"voy a confirmar evento {event_id} yo con {self.id}")
-                return self._confirm_event(user_id, event_id)
+                return self._confirm_event( event_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                local_response = self.first_node.send_data_tcp(CONFIRM_EVENT, f"{id}|{user_id}|{event_id}")
+                local_response = self.first_node.send_data_tcp(CONFIRM_EVENT, f"{id}|{event_id}")
                 return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
-                return self._confirm_event(user_id, event_id)
+                return self._confirm_event( event_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                local_response = self.first_node.send_data_tcp(CONFIRM_EVENT, f"{id}|{user_id}|{event_id}")
+                local_response = self.first_node.send_data_tcp(CONFIRM_EVENT, f"{id}|{event_id}")
                 return local_response.decode()
         else:
             print("Voy a la finger table")
-            local_response = self._closest_preceding_node(id).send_data_tcp(CONFIRM_EVENT, f"{id}|{user_id}|{event_id}")
+            local_response = self._closest_preceding_node(id).send_data_tcp(CONFIRM_EVENT, f"{id}|{event_id}")
             return local_response.decode()
     def cancel_event(self, id: int, user_id: int, event_id: int) -> str:
         print(f"cancel_event {id} {self.id}")
@@ -329,7 +329,7 @@ class ChordNode:
             else:
                 self.find_first()
                 time.sleep(3)
-                local_response = self.first_node.send_data_tcp(CANCEL_EVENT, f"{id}|{user_id}|{event_id}")
+                local_response = self.first_node.send_data_tcp(CANCEL_EVENT, f"{id}|{event_id}")
                 return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
@@ -337,11 +337,11 @@ class ChordNode:
             else:
                 self.find_first()
                 time.sleep(3)
-                local_response = self.first_node.send_data_tcp(CANCEL_EVENT, f"{id}|{user_id}|{event_id}")
+                local_response = self.first_node.send_data_tcp(CANCEL_EVENT, f"{id}|{event_id}")
                 return local_response.decode()
         else:
             print("Voy a la finger table")
-            local_response = self._closest_preceding_node(id).send_data_tcp(CANCEL_EVENT, f"{id}|{user_id}|{event_id}")
+            local_response = self._closest_preceding_node(id).send_data_tcp(CANCEL_EVENT, f"{id}|{event_id}")
             return local_response.decode()
     def list_events(self, id: int, user_id: int) -> str:
         print(f"list_events {id} {self.id}")
@@ -391,7 +391,7 @@ class ChordNode:
             print("Voy a la finger table")
             local_response = self._closest_preceding_node(id).send_data_tcp(LIST_EVENTS_PENDING, f"{id}|{user_name}")
             return local_response.decode()
-    def add_contact(self, id: int, user_id: int, contact_name: str, owner_id: int) -> str:
+    def add_contact(self, id: int, user_id: int, contact_name: str, owner_id: str) -> str:
         print(f"add_contact {id} {self.id}")
         if id > self.actual_leader_id:
             if self.first:
@@ -415,30 +415,30 @@ class ChordNode:
             local_response = self._closest_preceding_node(id).send_data_tcp(ADD_CONTACT, f"{id}|{user_id}|{contact_name}|{owner_id}")
             return local_response.decode()
 
-    def remove_contact(self, id: int, user_id: int, contact_id: int) -> str:
+    def remove_contact(self, id: int, contact_id: int) -> str:
         print(f"remove_contact {id} {self.id}")
         if id > self.actual_leader_id:
             if self.first:
                 print(f"voy a eliminar contacto {contact_id} yo con {self.id}")
-                return self._remove_contact(user_id, contact_id)
+                return self._remove_contact( contact_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                local_response = self.first_node.send_data_tcp(REMOVE_CONTACT, f"{id}|{user_id}|{contact_id}")
+                local_response = self.first_node.send_data_tcp(REMOVE_CONTACT, f"{id}|{contact_id}")
                 return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
-                return self._remove_contact(user_id, contact_id)
+                return self._remove_contact(contact_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                local_response = self.first_node.send_data_tcp(REMOVE_CONTACT, f"{id}|{user_id}|{contact_id}")
+                local_response = self.first_node.send_data_tcp(REMOVE_CONTACT, f"{id}|{contact_id}")
                 return local_response.decode()
         else:
             print("Voy a la finger table")
-            local_response = self._closest_preceding_node(id).send_data_tcp(REMOVE_CONTACT, f"{id}|{user_id}|{contact_id}")
+            local_response = self._closest_preceding_node(id).send_data_tcp(REMOVE_CONTACT, f"{id}|{contact_id}")
             return local_response.decode()
-    def list_contacts(self, id: int, user_id: int) -> str:
+    def list_contacts(self, id: int, user_id: str) -> str:
         print(f"list_contacts {id} {self.id}")
         if id > self.actual_leader_id:
             if self.first:
@@ -632,7 +632,7 @@ class ChordNode:
             local_response = self._closest_preceding_node(id).send_data_tcp(LIST_MEMBER, f"{id}|{user_id}|{group_id}")
             return local_response.decode()
 
-    def list_personal_agenda(self, id: int, user_id: int) -> str:
+    def list_personal_agenda(self, id: int, user_id: str) -> str:
         print(f"list_personal_agenda {id} {self.id}")
         if id > self.actual_leader_id:
             if self.first:
@@ -657,38 +657,38 @@ class ChordNode:
             local_response = self._closest_preceding_node(id).send_data_tcp(LIST_PERSONAL_AGENDA, f"{id}|{user_id}")
             return local_response.decode()
 
-    def list_group_agenda(self, id: int, group_id: int) -> str:
+    def list_group_agenda(self, id: int, group_id: int, user_name:str) -> str:
         print(f"list_group_agenda {id} {self.id}")
         if id > self.actual_leader_id:
             if self.first:
                 print(
                     f"voy a listar agenda del grupo {group_id} yo con {self.id}")
-                return self._list_group_agenda(group_id)
+                return self._list_group_agenda(group_id,user_name)
             else:
                 self.find_first()
                 time.sleep(3)
-                local_response = self.first_node.send_data_tcp(LIST_GROUP_AGENDA, f"{id}|{group_id}")
+                local_response = self.first_node.send_data_tcp(LIST_GROUP_AGENDA, f"{id}|{group_id}|{user_name}")
                 return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
-                return self._list_group_agenda(group_id)
+                return self._list_group_agenda(group_id,user_name)
             else:
                 self.find_first()
                 time.sleep(3)
-                local_response = self.first_node.send_data_tcp(LIST_GROUP_AGENDA, f"{id}|{group_id}")
+                local_response = self.first_node.send_data_tcp(LIST_GROUP_AGENDA, f"{id}|{group_id}|{user_name}")
                 return local_response.decode()
         else:
             print("Voy a la finger table")
-            local_response = self._closest_preceding_node(id).send_data_tcp(LIST_GROUP_AGENDA, f"{id}|{group_id}")
+            local_response = self._closest_preceding_node(id).send_data_tcp(LIST_GROUP_AGENDA, f"{id}|{group_id}|{user_name}")
             return local_response.decode()
 
     # Funciones privadas (_)
 
-    def _confirm_event(self, user_id: int, event_id: int) -> str:
+    def _confirm_event(self, event_id: int) -> str:
         success = self.db.confirm_event(event_id)
         return "Event confirmed" if success else "Failed to confirm event"
 
-    def _cancel_event(self, user_id: int, event_id: int) -> str:
+    def _cancel_event(self, event_id: int) -> str:
         success = self.db.cancel_event(event_id)
         return "Event canceled" if success else "Failed to cancel event"
 
@@ -702,16 +702,18 @@ class ChordNode:
         events = self.db.list_events_pending(user_id)
         return "\n".join([str(event) for event in events])
 
-    def _add_contact(self, user_id: int, contact_name: str, owner_id: int) -> str:
-        success = self.db.add_contact(user_id, contact_name, owner_id)
+    def _add_contact(self, user_id: int, contact_name: str, owner_id: str) -> str:
+        real_id = self.db.getUserID(owner_id)
+        success = self.db.add_contact(user_id, contact_name, real_id)
         return "Contact added" if success else "Failed to add contact"
 
-    def _remove_contact(self, user_id: int, contact_id: int) -> str:
+    def _remove_contact(self,contact_id: int) -> str:
         success = self.db.delete_contact(contact_id)
         return "Contact removed" if success else "Failed to remove contact"
 
-    def _list_contacts(self, user_id: int) -> str:
-        contacts = self.db.list_contacts(user_id)
+    def _list_contacts(self, user_id: str) -> str:
+        real_id = self.db.getUserID(user_id)
+        contacts = self.db.list_contacts(real_id)
         return "\n".join(contacts)
 
     def _create_group(self, owner_id: int, name: str) -> str:
@@ -745,12 +747,14 @@ class ChordNode:
         agenda = self.db.list_members(group_id)
         return "\n".join(agenda)
 
-    def _list_personal_agenda(self, user_id: int) -> str:
-        agenda = self.db.list_personal_agenda(user_id)
+    def _list_personal_agenda(self, user_id: str) -> str:
+        real_id = self.db.getUserID(user_id)
+        agenda = self.db.list_personal_agenda(real_id)
         return "\n".join(agenda)
 
-    def _list_group_agenda(self, group_id: int) -> str:
-        agenda = self.db.list_group_agenda(group_id)
+    def _list_group_agenda(self, group_id: int,user_name:str) -> str:
+        user_id = self.db.getUserID(user_name)
+        agenda = self.db.list_group_agenda(group_id,user_id)
         return "\n".join(agenda)
 # endregion
 # region CHORD
@@ -845,8 +849,9 @@ class ChordNode:
                 event_id, name, date, group_id)
         elif option == CONFIRM_EVENT:
             # Confirmar un evento
-            event_id = int(data[1])
-            response = self.confirm_event(event_id)
+            id = int(data[1])
+            event_id = int(data[2])
+            response = self.confirm_event(id,event_id)
         elif option == CANCEL_EVENT:
             # Cancelar un evento
             event_id = int(data[1])
@@ -862,18 +867,21 @@ class ChordNode:
             response = self.list_events_pending(user_id)
         elif option == ADD_CONTACT:
             # Agregar un contacto
-            user_id = int(data[1])
-            contact_name = data[2]
-            response = self.add_contact(user_id, contact_name)
+            id = int(data[1])
+            user_id = int(data[2])
+            contact_name = data[3]
+            user_name = data[4]
+            response = self.add_contact(id,user_id, contact_name,user_name)
         elif option == REMOVE_CONTACT:
             # Eliminar un contacto
             user_id = int(data[1])
-            contact_name = data[2]
-            response = self.remove_contact(user_id, contact_name)
+            contact_id = int(data[2])
+            response = self.remove_contact(user_id, contact_id)
         elif option == LIST_CONTACTS:
             # Listar contactos de un usuario
-            user_id = int(data[1])
-            response = self.list_contacts(user_id)
+            id = int(data[1])
+            user_name = data[2]
+            response = self.list_contacts(id,user_name)
         elif option == CREATE_GROUP:
             # Crear un grupo
             id = int(data[1])
@@ -924,12 +932,15 @@ class ChordNode:
             response = self.list_member(user_id, group_id)
         elif option == LIST_PERSONAL_AGENDA:
             # Listar agenda personal
-            user_id = int(data[1])
-            response = self.list_personal_agenda(user_id)
+            id = int(data[1])
+            user_name = data[2]
+            response = self.list_personal_agenda(id, user_name)
         elif option == LIST_GROUP_AGENDA:
             # Listar agenda grupal
-            group_id = int(data[1])
-            response = self.list_group_agenda(group_id)
+            id = int(data[1])
+            group_id = int(data[2])
+            user_name = data[3]
+            response = self.list_group_agenda(id,group_id,user_name)
         elif option == REQUEST_DATA:
             id = int(data[1])
             response = self.handler_data.data(True, id)
