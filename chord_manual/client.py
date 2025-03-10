@@ -164,8 +164,7 @@ if __name__ == "__main__":
 
             elif opcion == "4":
                 print("\n🔹 Listar Eventos:")
-                user = input("Ingrese su nombre: ")
-                response = connect_to_server(server_ip, 8000, "list_events", f"{chord_id}|{user}")
+                response = connect_to_server(server_ip, 8000, "list_events", f"{chord_id}|{username}")
                 print(f"🔹 Respuesta del servidor: {response}")
 
             elif opcion == "5":
