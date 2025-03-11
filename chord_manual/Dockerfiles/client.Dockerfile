@@ -1,18 +1,28 @@
-# Usa python como base
-FROM python:3.11-alpine
+# Usa Python como base
+FROM python:3.11-slim
 
-# Instala bash
-RUN apk add --no-cache bash
+# Instala dependencias del sistema necesarias para tkinter y PIL
+RUN apt-get update && apt-get install -y \
+    python3-tk \
+    libgl1-mesa-glx \
+    libx11-6 \
+    libxft2 \
+    libxext6 \
+    iproute2 \
+    xvfb \
+    && rm -rf /var/lib/apt/lists/*
 
 # Establece el directorio de trabajo
-WORKDIR  /app
+WORKDIR /app
 
-# Copia toda la carpeta a app
-COPY  client.py .
+# Copia los archivos al contenedor
+COPY client.py .
 COPY client.sh .
+COPY requirementsC.txt .
 
-# Instala Python 3.10.12 y otras dependencias
-RUN pip install requests
+# Instala las dependencias de Python
+RUN pip install --no-cache-dir -r requirementsC.txt
+RUN pip install --no-cache-dir customtkinter Pillow
 
-# Define el comando de entrada para el contenedor
-ENTRYPOINT ["bash", "client.sh"]
+# Ejecuta un servidor gráfico virtual y el cliente
+ENTRYPOINT ["bash", "-c", "Xvfb :99 -screen 0 1024x768x16 & export DISPLAY=:99 && bash client.sh"]
