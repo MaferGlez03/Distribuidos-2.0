@@ -235,7 +235,7 @@ class ChordNode:
         print(success)
         return f"{success}"
 
-    def create_event(self, id: int, name: str, date: str,owner:str, privacy: str, group_id=None) -> str:
+    def create_event(self, id: int, name: str, date: str,owner:int, privacy: str, group_id=None) -> str:
         if id > self.actual_leader_id:
             if self.first:
                 return self._create_event(name, date,owner, privacy, group_id)
@@ -258,12 +258,11 @@ class ChordNode:
             print("Voy a la finger table")
             local_response = self._closest_preceding_node(id).send_data_tcp(CREATE_EVENT, f'{id}|{name}|{date}|{owner}|{privacy}|{group_id}')
             return local_response.decode()
-    def _create_event(self, name: str, date: str,owner:str, privacy: str, group_id=None) -> str:
-        owner_id = self.db.getUserID(owner)
+    def _create_event(self, name: str, date: str,owner:int, privacy: str, group_id=None) -> str:
         success = self.db.create_event(
-            name, date, owner_id, privacy, group_id)
+            name, date, owner, privacy, group_id)
         print(success)
-        return f"Event created: {name}" if success else f"Failed to create event {name}"
+        return f"{success}"
 
     def create_group_event(self, id: int, name: str, date: str, owner:str, group_id) -> str:
         print(f"register {id} {self.id}")
@@ -807,7 +806,7 @@ class ChordNode:
             id = int(data[1])
             name = data[2]
             date = data[3]
-            owner = data[4]
+            owner = int(data[4])
             privacy = data[5]
             # group_id = int(data[6]) if len(data) > 6 else None
             group_id = None
