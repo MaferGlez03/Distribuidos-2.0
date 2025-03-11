@@ -34,7 +34,9 @@ document.getElementById('btn').addEventListener('click', function () {
             //     sessionStorage.setItem('authToken', data.token);
             //     sessionStorage.setItem('userData', JSON.stringify(data.user));
             // }
-            sessionStorage.setItem('userData', JSON.stringify(data));
+            sessionStorage.setItem('user_id', JSON.stringify(data.user_id));
+            sessionStorage.setItem('username', JSON.stringify(data.username));
+            sessionStorage.setItem('chord_id', JSON.stringify(data.chord_id));
             console.log(data.message)
             // Redirigir al usuario
             window.location.href = '/';

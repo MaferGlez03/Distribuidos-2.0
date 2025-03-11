@@ -1,9 +1,9 @@
 import {closeMenu} from './calendar.js';
 import {closeMenu2} from './groups.js';
 
-const userData = sessionStorage.getItem('userData');
-
-// Convierte el string JSON a un objeto JavaScript
+const chord_id = localStorage.getItem('chord_id') || sessionStorage.getItem('chord_id');
+const userData = localStorage.getItem('user_id') || sessionStorage.getItem('user_id');
+const username = localStorage.getItem('username') || sessionStorage.getItem('username');
 const idActualUser = int(userData);
 
 // Adicionar nuevo contacto
@@ -12,6 +12,7 @@ document.getElementById('btn_add_contact').addEventListener('click', function ()
     const username = document.getElementById('exampleInputUsername').value;
 
     const contactData = {
+        chord_id: chord_id,
         contact_name: username,
         owner_id: idActualUser
     }
@@ -47,7 +48,7 @@ document.getElementById('btn_add_contact').addEventListener('click', function ()
 document.getElementById('list_contacts').addEventListener('click', function () {
     // Realizar la solicitud GET al endpoint de contactos
     // fetch('http://127.0.0.1:5000/api/contacts/', {
-    fetch(`http://127.0.0.1:5000/contacts/${idActualUser}`, {
+    fetch(`http://127.0.0.1:5000/contacts/${idActualUser}/${chord_id}`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -98,7 +99,7 @@ document.getElementById('list_contacts').addEventListener('click', function () {
 });
 
 function deleteGroupFunction(contactId) {
-    fetch(`http://127.0.0.1:5000/contacts/${contactId}/delete/`, {
+    fetch(`http://127.0.0.1:5000/contacts/${contactId}/delete/${contactId}`, {
         method: 'DELETE', 
         headers: {
             'Content-Type': 'application/json',
