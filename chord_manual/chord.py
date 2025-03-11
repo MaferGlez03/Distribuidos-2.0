@@ -694,7 +694,7 @@ class ChordNode:
     def _list_events(self, user_id: int) -> str:
         real_id = self.db.getUserID(user_id)
         events = self.db.list_events(real_id)
-        return "\n".join([str(event) for event in events])
+        return "\n".join([str((event.name, event.date)) for event in events])
 
     def _list_events_pending(self, user_name: int) -> str:
         user_id = self.db.getUserID(user_name)
