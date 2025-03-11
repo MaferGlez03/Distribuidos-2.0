@@ -156,10 +156,10 @@ class Database:
 
         try:
             self.session.commit()
-            return (True, {'id': user.id, 'name': user.name})
+            return user.id 
         except:
             self.session.rollback()
-            return (False, None)  # El email ya está registrado
+            return None  # El email ya está registrado
 
     def login_user(self, username: str, password: str) -> dict:
         """
@@ -167,7 +167,7 @@ class Database:
         """
         user = self.session.query(User).filter_by(name=username).first()
         if user and user.check_password(password):
-            return {'id': user.id, 'name': user.name}
+            return user.id
         return None
 
     # Métodos para contactos

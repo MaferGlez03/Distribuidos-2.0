@@ -203,7 +203,7 @@ class ChordNode:
 
         success = self.db.register_user(name, email, password)
         print(success)
-        return (f"User {name} registered") if success else (f"Failed to register user {name}")
+        return f"{success}"
 
     def login_user(self, id: int, name: str, password: str) -> str:
         if id > self.actual_leader_id:
@@ -233,7 +233,7 @@ class ChordNode:
 
         success = self.db.login_user(name, password)
         print(success)
-        return ("User logged", success) if success else ("Failed to log user in", success)
+        return f"{success}"
 
     def create_event(self, id: int, name: str, date: str,owner:str, privacy: str, group_id=None) -> str:
         if id > self.actual_leader_id:
