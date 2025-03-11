@@ -1,4 +1,5 @@
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, render_template, send_from_directory, session
+from flask import Session
 from flask_cors import CORS
 from utils import set_id
 # from chord_dht import server
@@ -12,9 +13,8 @@ import ssl
 BROADCAST_IP = "255.255.255.255"
 UDP_PORT = 8888
 
-# Variable global para almacenar el ID del usuario registrado
-global chord_id
-global username
+chord_id = 1
+username = ''
 
 # Obtén el directorio de trabajo actual
 basedir = os.getcwd()
@@ -24,6 +24,10 @@ app = Flask(__name__,
             static_folder=os.path.join(basedir, 'backend/staticfiles')
             )
 CORS(app)  # Esto permite que el frontend (posiblemente en otro dominio) pueda comunicarse
+
+# Configuración de sesión (almacenamiento en servidor)
+app.config['SESSION_TYPE'] = 'filesystem'  
+session(app)  # Inicializa el sistema de sesiones
 
 def find_active_server(start_ip, end_ip, port, timeout=1):
     """
@@ -103,6 +107,8 @@ def static_files(filename):
 #* Endpoint para registrar usuario
 @app.route('/sign_up/', methods=['POST'])
 def sign_up():
+    global chord_id
+    global username
     data = request.get_json()
     name = data.get('username')
     email = data.get('email')
@@ -110,11 +116,10 @@ def sign_up():
     user_id = generate_id_(name)
     server_ip = available_server()
     response = connect_to_server(server_ip, 8000, "reg", f"{user_id}|{name}|{email}|{password}")
-    if not response is None:  # Suponiendo que el servidor devuelve "éxito" en caso de registro exitoso
-        global chord_id
-        global username
-        chord_id = user_id
-        username = name# Actualizar chord_id con el ID del usuario registrado
+    print(f"RESPONSE: {response}")
+    if response != 'None':  # Suponiendo que el servidor devuelve "éxito" en caso de registro exitoso
+        chord_id = user_id  # Guarda el ID del usuario en la sesión
+        username = name  # Guarda el username en la sesión
         return jsonify({'message': f"🔹 Respuesta del servidor", 'user': response}), 201
     else:
         return jsonify({'message': 'Error al registrar el usuario'}), 400
@@ -122,17 +127,17 @@ def sign_up():
 #* Endpoint para iniciar sesión
 @app.route('/log_in/', methods=['POST'])
 def log_in():
+    global chord_id
+    global username
     server_ip = available_server()
     data = request.get_json()
     user_name = data.get('username')
     password = data.get('password')
     user_id = generate_id_(user_name)
-    response = connect_to_server(server_ip, 8000, "log", f"{id}|{user_name}|{password}")
-    if not response is None:  # Suponiendo que el servidor devuelve "éxito" en caso de registro exitoso
-        global chord_id
-        global username
-        chord_id = user_id
-        username = user_name# Actualizar chord_id con el ID del usuario registrado
+    response = connect_to_server(server_ip, 8000, "log", f"{user_id}|{user_name}|{password}")
+    if response:    # Suponiendo que el servidor devuelve "éxito" en caso de registro exitoso
+        chord_id = user_id  # Guarda el ID del usuario en la sesión
+        username = user_name  # Guarda el username en la sesión
         return jsonify({'message': f'Ingreso exitoso:', 'user': response}), 201
     else:
         return jsonify({'message': 'Usuario no registrado'}), 401
