@@ -151,8 +151,9 @@ def add_contact():
     owner_id = data.get('owner_id')
     if user_id == owner_id:
         return jsonify({'message': 'Error, no se permite auto contacto'}), 400
-    response = connect_to_server(server_ip, 8000, "add_contact", f"{chord_id}|{user_id}|{contact_name}|{owner_id}")
-    if response:
+    response = connect_to_server(server_ip, 8000, "add_contact", f"{chord_id}|{contact_name}|{owner_id}")
+    bool_response = bool(response)
+    if bool_response:
         return jsonify({'message': 'Contacto agregado'}), 201
     else:
         return jsonify({'message': 'Error al agregar el contacto'}), 400
@@ -245,24 +246,15 @@ def create_individual_event():
 def confirm_event(event_id,user_id):
     server_ip = available_server()
     response = connect_to_server(server_ip, 8000, "confirm_event", f"{chord_id}|{user_id}|{event_id}")
-    if response:
+    bool_response = bool(response)
+    if bool_response:
         return jsonify({'message': 'Evento confirmado exitosamente'}), 200
     else:
         return jsonify({'message': 'Error al confirmar el evento'}), 400
 
-@app.route('/cancel_event/<int:event_id>/', methods=['POST'])
-def cancel_event(event_id,user_id):
-    server_ip = available_server()
-    response = connect_to_server(server_ip, 8000, "cancel_event", f"{chord_id}|{event_id}")
-    if response:
-        return jsonify({'message': 'Evento cancelado exitosamente'}), 200
-    else:
-        return jsonify({'message': 'Error al cancelar el evento'}), 400
-
 @app.route('/list_events/<int:user_id>/', methods=['GET'])
 def list_events(user_id):
     server_ip = available_server()
-    #! AQUI ENTRA UN ID Y SE TRABAJA COMO SI ENTRARA UN USERNAME
     response = connect_to_server(server_ip, 8000, "list_events", f"{chord_id}|{username}")
                 
     return jsonify({'events': response}), 200
@@ -270,9 +262,8 @@ def list_events(user_id):
 @app.route('/list_events_pending/<int:user_id>/', methods=['GET'])
 def list_events_pending(user_id):
     server_ip = available_server()
-    #! AQUI ENTRA UN ID Y SE TRABAJA COMO SI ENTRARA UN USERNAME
     response = connect_to_server(server_ip, 8000, "list_events_pending", f"{chord_id}|{username}")
-    return jsonify({'events': response}), 200
+    return jsonify(response), 200
 
 # ----------------------------
 # Endpoints para Grupos
