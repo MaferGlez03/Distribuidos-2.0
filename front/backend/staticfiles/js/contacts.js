@@ -80,44 +80,38 @@ export function getGroupId(name) {
 document.getElementById('btn_add_contact').addEventListener('click', function () {
     // Obtener los valores de los inputs
     const username = document.getElementById('exampleInputUsername').value;
-    getUserId(username)
-        .then(id => {
-            const contactData = {
-                user_id: id,
-                contact_name: username,
-                owner_id: idActualUser
-            }
-        
-        
-            // fetch('http://127.0.0.1:5000/api/contacts/', {
-            fetch('http://127.0.0.1:5000/contacts/', {
-                method: 'POST', 
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(contactData),
-            })
-                .then(response => {
-                    if (!response.ok) {
-                        return response.json().then(err => {
-                            throw new Error(`Error al crear el contacto: ${err.detail || err}`);
-                        });
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    // Redirigir al usuario
-                    closeMenu()
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert(error.message);
+
+    const contactData = {
+        contact_name: username,
+        owner_id: idActualUser
+    }
+    fetch('http://127.0.0.1:5000/contacts/', {
+        method: 'POST', 
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(contactData),
+    })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => {
+                    throw new Error(`Error al crear el contacto: ${err.detail || err}`);
                 });
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Redirigir al usuario
+            closeMenu()
         })
         .catch(error => {
-            console.error('Error al obtener el ID', error)
-        })
-});
+            console.error('Error:', error);
+            alert(error.message);
+        });
+})
+.catch(error => {
+    console.error('Error al obtener el ID', error)
+})
 
 // List Contacts
 document.getElementById('list_contacts').addEventListener('click', function () {

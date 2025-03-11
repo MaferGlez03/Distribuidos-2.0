@@ -77,7 +77,7 @@ export const manipulate = async () => {
                         if (dayElement) {
                             let eventsHTML = "";
                             dayEvents.forEach(event => {
-                                eventsHTML += `<p class="event-title">${event.name}</p>`;
+                                eventsHTML += `<p class="event-title">${event[0]}</p>`;
                             });
                             dayElement.innerHTML += eventsHTML; // Añade los eventos sin reemplazar
                         }
@@ -210,9 +210,11 @@ export function dailyEvents(day, url) {
             return response.json();
         })
         .then(data => {
-            const dayEvents = data.events.filter(event => {
-                console.log("Dia en el calendario", day, "Dia del evento", event.date)
-                return event.date == day
+            data1 = data.split('\n')
+            const dayEvents = data1.filter(event => {
+                date = Date(event[1])
+                console.log("Dia en el calendario", day, "Dia del evento", date)
+                return date == day
             })
             // const targetDate = new Date(fixHourZone(`${day}T00:00:00Z`, -19)); // Forzar formato UTC
             // const targetDateEnd = new Date(fixHourZone(`${day}T00:00:00Z`, 5));

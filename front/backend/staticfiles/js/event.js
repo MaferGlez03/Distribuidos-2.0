@@ -127,7 +127,7 @@ document.getElementById('alertsDropdown').addEventListener('click', function () 
             return response.json();
         })
         .then(data => {
-
+            data1 = data.split("\n")
             const menuEvent = document.getElementById('EventsPending')
             menuEvent.innerHTML = ''
 
@@ -137,7 +137,7 @@ document.getElementById('alertsDropdown').addEventListener('click', function () 
             menuEvent.appendChild(eventH6)
 
 
-            data['events'].forEach(singleEvent => {
+            data1.forEach(singleEvent => {
                 const Aelement = document.createElement('a');
                 Aelement.classList = ["dropdown-item d-flex align-items-center"];
                 Aelement.id = "Aelement"
@@ -201,19 +201,19 @@ document.getElementById('alertsDropdown').addEventListener('click', function () 
                     const eventData = singleEvent
 
                     const eventTitle = document.getElementById('EventTitle');
-                    eventTitle.textContent = eventData.name;
+                    eventTitle.textContent = eventData[1] // Name
 
                     const startTimeEvent = document.getElementById('startTimeEvent');
-                    startTimeEvent.textContent = eventData.date
+                    startTimeEvent.textContent = eventData[2] // Date
 
                     const privacyEvent = document.getElementById('privacyEvent');
-                    privacyEvent.textContent = eventData.privacy
+                    privacyEvent.textContent = eventData[4] // Privacy
 
                     const idEventText = document.getElementById('idEvent');
-                    idEventText.textContent = eventData.id
+                    idEventText.textContent = eventData[0] // ID
 
                     const groupIdEvent = document.getElementById('groupIdEvent');
-                    adminEvent.groupIdEvent = eventData.group_id
+                    adminEvent.groupIdEvent = eventData[5] // group_id
                 
                     // Identifica el menú a abrir
                     const menuId = this.getAttribute('data-menu');
@@ -287,13 +287,13 @@ document.getElementById('alertsDropdown').addEventListener('click', function () 
                 const divElement4 = document.createElement('div');
                 divElement4.className = ["small text-gray-500"]
                 divElement4.id = "DateInitEventPending"
-                divElement4.textContent = `id ${singleEvent.id} - date: ${formatToReadableDate(singleEvent.date)}`
+                divElement4.textContent = `id ${singleEvent[0]} - date: ${formatToReadableDate(singleEvent[2])}`
                 divElement3.appendChild(divElement4)
 
                 const spanElement = document.createElement('span');
                 spanElement.className = "font-weight-bold"
                 spanElement.id = "TitleEventPending"
-                spanElement.textContent = singleEvent.name
+                spanElement.textContent = singleEvent[1]
                 divElement3.appendChild(spanElement)
 
                 
@@ -365,33 +365,3 @@ document.getElementById('acceptBtn').addEventListener('click', function () {
         });
 });
 
-// Decline Event
-document.getElementById('declineBtn').addEventListener('click', function () {
-    const idEventUrl =  document.getElementById('idEvent')
-    console.log("Evento a cancelar", idEventUrl.textContent)
-    // fetch(`http://127.0.0.1:5000/api/events/${idEventUrl.textContent}/cancel/`, {
-    fetch(`http://127.0.0.1:5000/cancel_event/${idEventUrl.textContent}/`, {
-        method: 'DELETE',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: {},
-    })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => {
-                    throw new Error(`Error al rechazar el evento: ${err}`);
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log(data)
-            closeMenu()
-        })
-        .catch(error => {
-            // Manejar errores
-            console.error('Error:', error.message);
-            alert(error.message);
-        });
-});
