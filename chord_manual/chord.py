@@ -460,7 +460,7 @@ class ChordNode:
             print("Voy a la finger table")
             local_response = self._closest_preceding_node(id).send_data_tcp(LIST_CONTACTS, f"{id}|{user_id}")
             return local_response.decode()
-    def create_group(self, id: int, owner_id: str, name: str) -> str:
+    def create_group(self, id: int, owner_id: int, name: str) -> str:
         print(f"create_group {id} {self.id}")
         if id > self.actual_leader_id:
             if self.first:
@@ -715,9 +715,8 @@ class ChordNode:
         contacts = [str(c) for c in contacts_dict]
         return "\n".join(contacts)
 
-    def _create_group(self, owner_id: str, name: str) -> str:
-        real_id = self.db.getUserID(owner_id)
-        success = self.db.create_group(name, real_id)
+    def _create_group(self, owner_id: int, name: str) -> str:
+        success = self.db.create_group(name, owner_id)
         return f"{success}"
 
     def _delete_group(self, id:int) -> str:
@@ -871,7 +870,7 @@ class ChordNode:
             # Crear un grupo
             id = int(data[1])
             name = data[2]
-            user_name = data[3]
+            user_name = int(data[3])
             response = self.create_group(id, user_name, name)
         elif option == DELETE_GROUP:
             # Crear un grupo
