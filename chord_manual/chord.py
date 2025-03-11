@@ -685,11 +685,11 @@ class ChordNode:
 
     def _confirm_event(self, user_id: int, event_id: int) -> str:
         success = self.db.confirm_event(event_id)
-        return "Event confirmed" if success else "Failed to confirm event"
+        return f"{success}"
 
     def _cancel_event(self, event_id: int) -> str:
         success = self.db.cancel_event(event_id)
-        return "Event canceled" if success else "Failed to cancel event"
+        return f'{success}'
 
     def _list_events(self, user_id: int) -> str:
         real_id = self.db.getUserID(user_id)
@@ -699,7 +699,7 @@ class ChordNode:
     def _list_events_pending(self, user_name: int) -> str:
         user_id = self.db.getUserID(user_name)
         events = self.db.list_events_pending(user_id)
-        return "\n".join([str(event) for event in events])
+        return "\n".join([str((event.id,event.name, event.date,event.owner_id, event.privacy, event.group_id)) for event in events])
 
     def _add_contact(self, user_id: int, contact_name: str, owner_id: int) -> str:
         success = self.db.add_contact(user_id, contact_name, owner_id)
