@@ -1,10 +1,13 @@
 import {closeMenu} from './calendar.js';
 import {closeMenu2} from './groups.js';
 
-const chord_id = localStorage.getItem('chord_id') || sessionStorage.getItem('chord_id');
 const userData = localStorage.getItem('user_id') || sessionStorage.getItem('user_id');
 const username = localStorage.getItem('username') || sessionStorage.getItem('username');
-const idActualUser = int(userData);
+const chord_id = parseInt(localStorage.getItem('chord_id') || sessionStorage.getItem('chord_id'), 10);
+const idActualUser = parseInt(userData, 10);
+console.log("chord_id", chord_id)
+console.log("username", username)
+console.log("idActualUser", idActualUser)
 
 // Adicionar nuevo contacto
 document.getElementById('btn_add_contact').addEventListener('click', function () {
@@ -47,7 +50,6 @@ document.getElementById('btn_add_contact').addEventListener('click', function ()
 // List Contacts
 document.getElementById('list_contacts').addEventListener('click', function () {
     // Realizar la solicitud GET al endpoint de contactos
-    // fetch('http://127.0.0.1:5000/api/contacts/', {
     fetch(`http://127.0.0.1:5000/contacts/${idActualUser}/${chord_id}`, {
         method: 'GET',
         headers: {
@@ -64,15 +66,21 @@ document.getElementById('list_contacts').addEventListener('click', function () {
             return response.json();
         })
         .then(data => {
+            let data1 = data.split('\n')
+            if (data.length === 0) {
+                data1 = data
+            }
             // Mostrar los contactos en la consola o en la UI
             console.log('Contactos obtenidos:', data);
-            data1 = data.split('\n')
             // Aquí puedes manipular los datos para mostrarlos en la página
             const contactList = document.getElementById('contact-list'); // Asegúrate de tener un contenedor en tu HTML con este ID
             contactList.innerHTML = ''; // Limpiar cualquier contenido previo
 
-            data1.forEach(contact => {
+            data1.forEach(contact0 => {
                 const listItem = document.createElement('li');
+                const contact1 = contact0.replace(/^\(/, "[").replace(/\)$/, "]");
+                const contact = JSON.parse(contact1)
+
                 listItem.textContent = `${contact[0]}`; //name
 
                 // Crear el ícono de basura

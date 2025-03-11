@@ -4,8 +4,8 @@ import {selectGroupEvent} from './groups.js';
 
 const userData = localStorage.getItem('user_id') || sessionStorage.getItem('user_id');
 const username = localStorage.getItem('username') || sessionStorage.getItem('username');
-const chord_id = localStorage.getItem('chord_id') || sessionStorage.getItem('chord_id');
-const idActualUser = int(userData);
+const chord_id = parseInt(localStorage.getItem('chord_id') || sessionStorage.getItem('chord_id'), 10);
+const idActualUser = parseInt(userData, 10);
 
 // Variables globales
 const overlay = document.getElementById('overlay');
@@ -74,7 +74,7 @@ document.getElementById('btn_create_event').addEventListener('click', async func
 
 // Boton de Select Group en Create a new Event
 document.getElementById('btn_select_group').addEventListener('click', function(){
-    const idUserEvent = selectGroupEvent(idActualUser); // Llamar a la función para abrir el menú flotante
+    const idUserEvent = selectGroupEvent(); // Llamar a la función para abrir el menú flotante
 })
 
 // Boton de Select Contact en Create a new Event
@@ -82,41 +82,8 @@ document.getElementById('btn_select_contact').addEventListener('click', function
     const idUserEvent = selectUserEvent(idActualUser); // Llamar a la función para abrir el menú flotante
 })
 
-// View Event
-async function viewEvent(idEvent) {
-    try {
-        const response = await fetch(`http://127.0.0.1:5000/list_events_pending/${idActualUser}/`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(`Error al obtener eventos: ${err.detail || err}`);
-        }
-
-        const data = await response.json();
-        console.log("data", data)
-        const EventFinal = data.find(event => event.id === idEvent);
-
-        if (!EventFinal) {
-            throw new Error(`El evento con ID ${idEvent} no se encontró.`);
-        }
-
-        return EventFinal;
-    } catch (error) {
-        console.error('Error:', error.message);
-        alert(error.message);
-        throw error; // Re-lanzar el error para manejarlo en la llamada
-    }
-}
-
-
 document.getElementById('alertsDropdown').addEventListener('click', function () {
-    // return fetch('http://127.0.0.1:5000/api/events/pending/', {
-    return fetch(`http://127.0.0.1:5000/list_events_pending/${idActualUser}/`, {
+    return fetch(`http://127.0.0.1:5000/list_events_pending/${chord_id}/${username}/`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -131,7 +98,10 @@ document.getElementById('alertsDropdown').addEventListener('click', function () 
             return response.json();
         })
         .then(data => {
-            data1 = data.split("\n")
+            let data1 = data.split('\n')
+            if (data.length === 0) {
+                data1 = data
+            }
             const menuEvent = document.getElementById('EventsPending')
             menuEvent.innerHTML = ''
 
@@ -141,7 +111,9 @@ document.getElementById('alertsDropdown').addEventListener('click', function () 
             menuEvent.appendChild(eventH6)
 
 
-            data1.forEach(singleEvent => {
+            data1.forEach(singleEvent0 => {
+                const singleEvent1 = singleEvent0.replace(/^\(/, "[").replace(/\)$/, "]");
+                const singleEvent = JSON.parse(singleEvent1)
                 const Aelement = document.createElement('a');
                 Aelement.classList = ["dropdown-item d-flex align-items-center"];
                 Aelement.id = "Aelement"
@@ -342,7 +314,7 @@ function closeMenu() {
 document.getElementById('acceptBtn').addEventListener('click', function () {
     const idEventUrl =  document.getElementById('idEvent')
     // return fetch(`http://127.0.0.1:5000/api/events/${idEventUrl.textContent}/accept/`, {
-    return fetch(`http://127.0.0.1:5000/confirm_event/${idEventUrl.textContent}/`, {
+    return fetch(`http://127.0.0.1:5000/confirm_event/${idEventUrl.textContent}/${chord_id}/${idActualUser}/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

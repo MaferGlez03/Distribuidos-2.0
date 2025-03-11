@@ -3,6 +3,7 @@ from flask_cors import CORS
 import os
 import hashlib
 import socket
+import ast
 
 BROADCAST_IP = "255.255.255.255"
 UDP_PORT = 8888
@@ -101,9 +102,11 @@ def sign_up():
     chord_id = generate_id_(name)
     server_ip = available_server()
     response = connect_to_server(server_ip, 8000, "reg", f"{chord_id}|{name}|{email}|{password}")
-    print(f"RESPONSE: {response}")
+    app.logger.info(f"Respuesta del servidor: {response}")
+    response2 = ast.literal_eval(response)
+    app.logger.info(f"Respuesta del servidor: {response2}")
     if response != 'None':  # Suponiendo que el servidor devuelve "éxito" en caso de registro exitoso
-        return jsonify({'message': f"🔹 Respuesta del servidor", 'user_id': response[0], 'username': response[1], 'chord_id': chord_id}), 201
+        return jsonify({'message': f"🔹 Respuesta del servidor", 'user_id': response2[0], 'username': response2[1], 'chord_id': chord_id}), 201
     else:
         return jsonify({'message': 'Error al registrar el usuario'}), 400
 
@@ -115,9 +118,15 @@ def log_in():
     username = data.get('username')
     password = data.get('password')
     chord_id = generate_id_(username)
+
+    # Crear el mensaje
+    message = f"{chord_id}|{username}|{password}"
+    print(f"Mensaje enviado: {message}")
+
     response = connect_to_server(server_ip, 8000, "log", f"{chord_id}|{username}|{password}")
+    response2 = ast.literal_eval(response)
     if response:    # Suponiendo que el servidor devuelve "éxito" en caso de registro exitoso
-        return jsonify({'message': f"🔹 Respuesta del servidor", 'user_id': response[0], 'username': response[1], 'chord_id': chord_id}), 201
+        return jsonify({'message': f"🔹 Respuesta del servidor", 'user_id': response2[0], 'username': response2[1], 'chord_id': chord_id}), 201
     else:
         return jsonify({'message': 'Usuario no registrado'}), 401
 
@@ -148,6 +157,7 @@ def add_contact():
 def list_contacts(contact_id, chord_id):
     server_ip = available_server()
     response = connect_to_server(server_ip, 8000, "list_contacts", f"{chord_id}|{contact_id}")
+    app.logger.info(f"Respuesta del servidor: {response}")
     return jsonify(response), 200
 
 #! Endopoint para eliminar contactos
@@ -174,6 +184,11 @@ def create_event():
     owner_id = data.get('owner_id')
     privacy = data.get('privacy')
     chord_id = data.get('chord_id')
+    app.logger.info(f"Respuesta del servidor: {event_name}")
+    app.logger.info(f"Respuesta del servidor: {event_date}")
+    app.logger.info(f"Respuesta del servidor: {owner_id}")
+    app.logger.info(f"Respuesta del servidor: {privacy}")
+    app.logger.info(f"Respuesta del servidor: {chord_id}")
     response = connect_to_server(server_ip, 8000, "create_event", f"{chord_id}|{event_name}|{event_date}|{owner_id}|{privacy}")
     bool_response = bool(response)
     if bool_response:
@@ -197,6 +212,7 @@ def create_group_event():
     else:
         return jsonify({'message': 'Error al crear el evento grupal'}), 400
 
+# Endpoint para crear evento individual
 @app.route('/create_individual_event/', methods=['POST'])
 def create_individual_event():
     server_ip = available_server()
@@ -210,9 +226,9 @@ def create_individual_event():
     else:
         return jsonify({'message': 'Error al crear el evento individual'}), 400
 
-#* Endpoint para confirmar evento
-@app.route('/confirm_event/<int:event_id>/', methods=['POST'])
-def confirm_event(event_id,user_id):
+#! Endpoint para confirmar evento
+@app.route('/confirm_event/<int:event_id>/<int:chord_id>/<int:user_id>/', methods=['POST'])
+def confirm_event(event_id, chord_id, user_id):
     server_ip = available_server()
     response = connect_to_server(server_ip, 8000, "confirm_event", f"{chord_id}|{user_id}|{event_id}")
     bool_response = bool(response)
@@ -221,38 +237,41 @@ def confirm_event(event_id,user_id):
     else:
         return jsonify({'message': 'Error al confirmar el evento'}), 400
 
-#* Endpoint para listar eventos
-@app.route('/list_events/<int:user_id>/', methods=['GET'])
-def list_events(user_id):
+#! Endpoint para listar eventos
+@app.route('/list_events/<int:chord_id>/<string:user_name>/', methods=['GET'])
+def list_events(chord_id, user_name):
     server_ip = available_server()
     response = connect_to_server(server_ip, 8000, "list_events", f"{chord_id}|{user_name}")
                 
-    return jsonify({'events': response}), 200
+    return jsonify(response), 200
 
-#* Endpoint para listar eventos pendientes
-@app.route('/list_events_pending/<int:user_id>/', methods=['GET'])
-def list_events_pending(user_id):
+#! Endpoint para listar eventos pendientes
+@app.route('/list_events_pending/<int:chord_id>/<string:username>/', methods=['GET'])
+def list_events_pending(chord_id, username):
     server_ip = available_server()
-    response = connect_to_server(server_ip, 8000, "list_events_pending", f"{chord_id}|{user_name}")
+    response = connect_to_server(server_ip, 8000, "list_events_pending", f"{chord_id}|{username}")
     return jsonify(response), 200
 
 # ----------------------------
 # Endpoints para Grupos
 # ----------------------------
 
-#* Endpoint para crear grupo
+#! Endpoint para crear grupo
 @app.route('/create_group/', methods=['POST'])
 def create_group():
     server_ip = available_server()
     data = request.get_json()
     group_name = data.get('name')
-    response = connect_to_server(server_ip, 8000, "create_group", f"{chord_id}|{group_name}|{user_name}")
+    chord_id = data.get('chord_id')
+    user_id = data.get('user_id')
+    response = connect_to_server(server_ip, 8000, "create_group", f"{chord_id}|{group_name}|{user_id}")
+    app.logger.info(f"Respuesta del servidor al crear grupo: {response}")
     if response:
         return jsonify({'message': 'Grupo creado exitosamente'}), 201
     else:
         return jsonify({'message': 'Error al crear el grupo'}), 400
 
-#* Add miembro a grupo
+#! Adicionar miembro a grupo
 @app.route('/add_member_to_group/', methods=['POST'])
 def add_member_to_group():
     server_ip = available_server()
@@ -260,35 +279,41 @@ def add_member_to_group():
     group_id = data.get('group_id')
     member_id = data.get('user_id')
     role = data.get('role', 'member')
+    chord_id = data.get('chord_id')
     response = connect_to_server(server_ip, 8000, "add_member_to_group", f"{chord_id}|{group_id}|{member_id}|{role}")
     if response:
         return jsonify({'message': 'Miembro agregado al grupo'}), 201
     else:
         return jsonify({'message': 'Error al agregar miembro al grupo'}), 400
 
-@app.route('/remove_member_from_group/<int:group_id>/<int:member_id>/<int:admin_id>', methods=['DELETE'])
-def remove_member_from_group(group_id, member_id, admin_id):
+#! Eliminar miembro de un grupo
+@app.route('/remove_member_from_group/<int:group_id>/<int:member_id>/<int:chord_id>/<string:username>/', methods=['DELETE'])
+def remove_member_from_group(group_id, member_id, chord_id, username):
     server_ip = available_server()
-    response = connect_to_server(server_ip, 8000, "remove_member_from_group", f"{chord_id}|{group_id}|{member_id}|{user_name}")
+    response = connect_to_server(server_ip, 8000, "remove_member_from_group", f"{chord_id}|{group_id}|{member_id}|{username}")
     if response:
         return jsonify({'message': response}), 201
     else:
         return jsonify({'message': 'Error al remover miembro del grupo'}), 400
 
-@app.route('/list_groups/<int:user_id>/', methods=['GET'])
-def list_groups(user_id):
+#! Listar grupos
+@app.route('/list_groups/<int:chord_id>/<string:username>/', methods=['GET'])
+def list_groups(chord_id, username):
     server_ip = available_server()
-    response = connect_to_server(server_ip, 8000, "list_groups", f"{chord_id}|{user_name}")
+    response = connect_to_server(server_ip, 8000, "list_groups", f"{chord_id}|{username}")
+    app.logger.info(f"Respuesta del servidor al listar grupos: {response}")
     return jsonify(response), 200
 
-@app.route('/list_members/<int:group_id>/', methods=['GET'])
-def list_members(group_id):
+#! Listar miembros de un grupo
+@app.route('/list_members/<int:group_id>/<int:chord_id>/', methods=['GET'])
+def list_members(group_id, chord_id):
     server_ip = available_server()
     response = connect_to_server(server_ip, 8000, "list_member", f"{chord_id}|{group_id}")
-    return jsonify({'members': response}), 200
+    return jsonify(response), 200
 
-@app.route('/delete_group/<int:group_id>/', methods=['DELETE'])
-def delete_group(group_id):
+#! Eliminar grupo
+@app.route('/delete_group/<int:group_id>/<int:chord_id>/', methods=['DELETE'])
+def delete_group(group_id, chord_id):
     server_ip = available_server()
     response = connect_to_server(server_ip, 8000, "delete_group", f"{chord_id}|{group_id}")
     if response:

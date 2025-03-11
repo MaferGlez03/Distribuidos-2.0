@@ -867,6 +867,7 @@ class ChordNode:
             user_id = int(data[2])
             response = self.list_contacts(chord_id, user_id)
         elif option == CREATE_GROUP:
+            print("CREA GRUPO")
             # Crear un grupo
             id = int(data[1])
             name = data[2]
@@ -1417,11 +1418,10 @@ class ChordNode:
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             s.bind((self.ip, self.tcp_port))
             print(f'Socket TCP binded to ({self.ip}, {self.tcp_port})')
-            s.listen()
+            s.listen(10)
 
             # Se queda escuchando cualquier mensaje entrante
             while True:
-                time.sleep(1)
                 conn, addr = s.accept()
                 client = threading.Thread(target=self._handle_client_tcp, args=(conn, addr))
                 client.start()

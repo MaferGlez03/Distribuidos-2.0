@@ -1,7 +1,7 @@
 const userData = localStorage.getItem('user_id') || sessionStorage.getItem('user_id');
 const username = localStorage.getItem('username') || sessionStorage.getItem('username');
-const chord_id = localStorage.getItem('chord_id') || sessionStorage.getItem('chord_id');
-const idActualUser = int(userData);
+const chord_id = parseInt(localStorage.getItem('chord_id') || sessionStorage.getItem('chord_id'), 10);
+const idActualUser = parseInt(userData, 10);
 
 window.globalVariable = ""
 
@@ -187,12 +187,10 @@ export function dailyEvents(day, url) {
     var urlFinal
     if (url) {
         if (url !== "") {
-            // urlFinal = 'http://127.0.0.1:5000/api/events/${url}'
-            urlFinal = `http://127.0.0.1:5000/list_events/${idActualUser}`
+            urlFinal = `http://127.0.0.1:5000/list_events/${chord_id}/${username}/`
         }
     } else {
-        // urlFinal = 'http://127.0.0.1:5000/api/events/'
-        urlFinal = `http://127.0.0.1:5000/list_events/${idActualUser}`
+        urlFinal = `http://127.0.0.1:5000/list_events/${chord_id}/${username}/`
     }
     return fetch(urlFinal, {
         method: 'GET',
@@ -209,9 +207,18 @@ export function dailyEvents(day, url) {
             return response.json();
         })
         .then(data => {
-            data1 = data.split('\n')
-            const dayEvents = data1.filter(event => {
-                date = Date(event[1])
+            let data1 = data.split('\n')
+            if (data.length === 0) {
+                data1 = data
+            }
+            const dayEvents = data1.filter(event0 => {
+                console.log(event0)
+                const event2 = event0.replace(/^\(/, "[").replace(/\)$/, "]"); // Convertir a array JSON
+                console.log(event2)
+                const event1 = JSON.parse(event2)
+                console.log(event1)
+
+                const date = Date(event1[1])
                 console.log("Dia en el calendario", day, "Dia del evento", date)
                 return date == day
             })
