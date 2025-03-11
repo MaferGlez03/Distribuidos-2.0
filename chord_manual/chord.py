@@ -390,28 +390,28 @@ class ChordNode:
             print("Voy a la finger table")
             local_response = self._closest_preceding_node(id).send_data_tcp(LIST_EVENTS_PENDING, f"{id}|{user_name}")
             return local_response.decode()
-    def add_contact(self, id: int, user_id: int, contact_name: str, owner_id: int) -> str:
+    def add_contact(self, id: int, contact_name: str, owner_id: int) -> str:
         print(f"add_contact {id} {self.id}")
         if id > self.actual_leader_id:
             if self.first:
                 print(f"voy a añadir contacto {contact_name} yo con {self.id}")
-                return self._add_contact(user_id, contact_name, owner_id)
+                return self._add_contact(contact_name, owner_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                local_response = self.first_node.send_data_tcp(ADD_CONTACT, f"{id}|{user_id}|{contact_name}|{owner_id}")
+                local_response = self.first_node.send_data_tcp(ADD_CONTACT, f"{id}|{contact_name}|{owner_id}")
                 return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
-                return self._add_contact(user_id, contact_name, owner_id)
+                return self._add_contact( contact_name, owner_id)
             else:
                 self.find_first()
                 time.sleep(3)
-                local_response = self.first_node.send_data_tcp(ADD_CONTACT, f"{id}|{user_id}|{contact_name}|{owner_id}")
+                local_response = self.first_node.send_data_tcp(ADD_CONTACT, f"{id}|{contact_name}|{owner_id}")
                 return local_response.decode()
         else:
             print("Voy a la finger table")
-            local_response = self._closest_preceding_node(id).send_data_tcp(ADD_CONTACT, f"{id}|{user_id}|{contact_name}|{owner_id}")
+            local_response = self._closest_preceding_node(id).send_data_tcp(ADD_CONTACT, f"{id}|{contact_name}|{owner_id}")
             return local_response.decode()
 
     def remove_contact(self, id: int, contact_id: int) -> str:
@@ -701,9 +701,10 @@ class ChordNode:
         events = self.db.list_events_pending(user_id)
         return "\n".join([str((event.id,event.name, event.date,event.owner_id, event.privacy, event.group_id)) for event in events])
 
-    def _add_contact(self, user_id: int, contact_name: str, owner_id: int) -> str:
+    def _add_contact(self, contact_name: str, owner_id: int) -> str:
+        user_id = self.db.getUserID(contact_name)
         success = self.db.add_contact(user_id, contact_name, owner_id)
-        return "Contact added" if success else "Failed to add contact"
+        return f"{success}"
 
     def _remove_contact(self, contact_id: int) -> str:
         success = self.db.delete_contact(contact_id)
@@ -853,10 +854,9 @@ class ChordNode:
         elif option == ADD_CONTACT:
             # Agregar un contacto
             chord_id = int(data[1])
-            user_id = int(data[2])
-            contact_name = data[3]
-            user_id = int(data[4])
-            response = self.add_contact(chord_id, user_id, contact_name, user_id)
+            contact_name = data[2]
+            user_id = int(data[3])
+            response = self.add_contact(chord_id, contact_name, user_id)
         elif option == REMOVE_CONTACT:
             # Eliminar un contacto
             user_id = int(data[1])
