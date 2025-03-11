@@ -2,7 +2,9 @@ import {manipulate} from './calendar.js';
 import {selectUserEvent} from './groups.js';
 import {selectGroupEvent} from './groups.js';
 
-const userData = localStorage.getItem('userData') || sessionStorage.getItem('userData');
+const userData = localStorage.getItem('user_id') || sessionStorage.getItem('user_id');
+const username = localStorage.getItem('username') || sessionStorage.getItem('username');
+const chord_id = localStorage.getItem('chord_id') || sessionStorage.getItem('chord_id');
 const idActualUser = int(userData);
 
 // Variables globales
@@ -35,7 +37,9 @@ document.getElementById('btn_create_event').addEventListener('click', async func
         start_time: `${eventDateInit}`,
         owner_id: idActualUser,
         privacy: eventPrivacy,
-        group: groupEvent || userEvent || null
+        group: groupEvent || userEvent || null,
+        actualUsername: username,
+        chord_id: chord_id
     };
 
     const dataF = Object.fromEntries(Object.entries(rawData).filter(([_, value]) => value !== null));

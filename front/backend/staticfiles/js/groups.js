@@ -5,9 +5,10 @@ import {manipulate} from './calendar.js';
 console.log("sessionStorage", sessionStorage)
 console.log("localStorage", localStorage)
 
-const userData = sessionStorage.getItem('userData');
+const userData = localStorage.getItem('user_id') || sessionStorage.getItem('user_id');
+const username = localStorage.getItem('username') || sessionStorage.getItem('username');
+const chord_id = localStorage.getItem('chord_id') || sessionStorage.getItem('chord_id');
 const idActualUser = int(userData);
-
 
 window.globalVariable = '';
 
@@ -319,7 +320,7 @@ function addMemberFunction(id, group) {
 
 
     // fetch('http://127.0.0.1:8000/api/contacts/', {
-    fetch(`http://127.0.0.1:5000/contacts/${id}`, {
+    fetch(`http://127.0.0.1:5000/contacts/${id}/${chord_id}`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json', // Token para autenticación
@@ -534,7 +535,7 @@ export function selectUserEvent(id) {
 
 
     // fetch('http://127.0.0.1:8000/api/contacts/', {
-    fetch(`http://127.0.0.1:5000/contacts/${id}`, {
+    fetch(`http://127.0.0.1:5000/contacts/${id}/${chord_id}`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json', // Token para autenticación

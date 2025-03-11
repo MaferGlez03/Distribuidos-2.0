@@ -1,9 +1,8 @@
-const userData = sessionStorage.getItem('userData');
-
-console.log(userData)
-
-// Convierte el string JSON a un objeto JavaScript
+const userData = localStorage.getItem('user_id') || sessionStorage.getItem('user_id');
+const username = localStorage.getItem('username') || sessionStorage.getItem('username');
+const chord_id = localStorage.getItem('chord_id') || sessionStorage.getItem('chord_id');
 const idActualUser = int(userData);
+
 window.globalVariable = ""
 
 let date = new Date();

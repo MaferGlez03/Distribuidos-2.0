@@ -156,7 +156,7 @@ class Database:
 
         try:
             self.session.commit()
-            return user.id 
+            return user.id, user.name
         except:
             self.session.rollback()
             return None  # El email ya está registrado
