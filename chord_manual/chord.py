@@ -708,7 +708,7 @@ class ChordNode:
 
     def _remove_contact(self, contact_id: int) -> str:
         success = self.db.delete_contact(contact_id)
-        return "Contact removed" if success else "Failed to remove contact"
+        return f"{success}"
 
     def _list_contacts(self, user_id: int) -> str:
         contacts_dict = self.db.list_contacts(user_id)
