@@ -1,6 +1,4 @@
 import {closeMenu} from './calendar.js';
-import {getUserId} from './contacts.js';
-import {getGroupId} from './contacts.js';
 import {adjustDateByDays} from './calendar.js';
 import {manipulate} from './calendar.js';
 
@@ -90,17 +88,18 @@ document.getElementById('list_groups').addEventListener('click', function () {
         .then(data => {
             // Mostrar los contactos en la consola o en la UI
             console.log('Grupos obtenidos:', data);
+            data1 = data.split('\n')
 
             // Aquí puedes manipular los datos para mostrarlos en la página
             const groupList = document.getElementById('group-list'); // Asegúrate de tener un contenedor en tu HTML con este ID
             groupList.innerHTML = ''; // Limpiar cualquier contenido previo
 
-            data.groups.forEach(group => {
+            data1.forEach(group => {
                 const Item = document.createElement('li');
                 
                 // Nombre del grupo
                 const nameItem = document.createElement('h5');
-                nameItem.textContent = `${group.name}`;
+                nameItem.textContent = `${group[1]}`;
 
                 // Crear el ícono de info
                 const infoCircle = document.createElement('i');
@@ -115,7 +114,7 @@ document.getElementById('list_groups').addEventListener('click', function () {
                 // });
                 
                 infoCircle.addEventListener('click', function () {
-                    fetch(`http://127.0.0.1:5000/list_members/${group.id}/`, {
+                    fetch(`http://127.0.0.1:5000/list_members/${group[0]}/`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
@@ -166,27 +165,10 @@ function openGroupInfoMenu(group, members) {
     // menu7 abierto
     const menu = document.getElementById('menu7');
     menu.innerHTML = ''; // Limpiar cualquier contenido previo
-
+    members1 = members.split('\n')
     // Nombre del grupo
     const nameItem = document.createElement('h5');
-    nameItem.textContent = `${group.name}`;
-
-    // Creador/Admin del grupo
-    const admin = document.createElement('p');
-    admin.textContent = `Admin: ${searchId(group.created_by)}`;
-
-    // Descripcion del grupo
-    const description = document.createElement('p');
-    description.textContent = `${group.description}`;
-
-    // Tiene jerarquia?
-    const hierarchical = document.createElement('p');
-    hierarchical.textContent = ' is hierachical'
-
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox'; // Define el tipo como checkbox
-    checkbox.checked = group.is_hierarchical; // Marcar/desmarcar según el valor de group.is_hierarchical
-    checkbox.disabled = true; // Hacer que no se pueda cambiar su estado
+    nameItem.textContent = `${group[1]}`;
 
     hierarchical.appendChild(checkbox);
 
@@ -194,47 +176,43 @@ function openGroupInfoMenu(group, members) {
     const membersList = document.createElement('ul');
     membersList.className = 'get-list'
     // membersList.textContent = 'Members:'
-    members['members'].forEach(member => {
+    members1.forEach(member => {
         const memberList = document.createElement('li');
-        getUsername(member)
-            .then(username => {
-                memberList.textContent = `Member: ${username}`;
-                membersList.appendChild(memberList)
-        
-                // Icono agenda miembro
-                const agendaIconMember = document.createElement('i');
-                agendaIconMember.className = 'fas fa-calendar-alt';
-                agendaIconMember.style.paddingLeft = '10px';
-                agendaIconMember.style.paddingRight = '10px';
-                agendaIconMember.addEventListener('click', function () {
-                    const date = agendaGroup();
-                    window.globalVariable = date;
-                    manipulate();
-                    window.globalVariable = "";
-                    closeMenu2();
-                    closeMenu();
-                })
-        
-                // Icono borrar miembro
-                const deleteMember = document.createElement('i');
-                deleteMember.className = 'fas fa-trash-alt';
-                deleteMember.style.paddingLeft = '10px'; // Espacio entre el nombre y el ícono
-                deleteMember.addEventListener('click', function () {
-                    console.log('group id: ', group.id)
-                    console.log('member id: ', member)
-                    deleteMemberFunction(group.id, member); // Llamar a la función para abrir el menú flotante
-                });
-                memberList.appendChild(agendaIconMember)
-                memberList.appendChild(deleteMember)
+            memberList.textContent = `Member: ${username}`;
+            membersList.appendChild(memberList)
+    
+            // Icono agenda miembro
+            const agendaIconMember = document.createElement('i');
+            agendaIconMember.className = 'fas fa-calendar-alt';
+            agendaIconMember.style.paddingLeft = '10px';
+            agendaIconMember.style.paddingRight = '10px';
+            agendaIconMember.addEventListener('click', function () {
+                const date = agendaGroup();
+                window.globalVariable = date;
+                manipulate();
+                window.globalVariable = "";
+                closeMenu2();
+                closeMenu();
             })
-    })
+    
+            // Icono borrar miembro
+            const deleteMember = document.createElement('i');
+            deleteMember.className = 'fas fa-trash-alt';
+            deleteMember.style.paddingLeft = '10px'; // Espacio entre el nombre y el ícono
+            deleteMember.addEventListener('click', function () {
+                console.log('group id: ', group[0])
+                deleteMemberFunction(group[0], member[0]); // Llamar a la función para abrir el menú flotante
+            });
+            memberList.appendChild(agendaIconMember)
+            memberList.appendChild(deleteMember)
+        })
 
     // Icono borrar grupo
     const trashIcon = document.createElement('i');
     trashIcon.className = 'fas fa-trash-alt';
     trashIcon.style.paddingLeft = '10px'; // Espacio entre el nombre y el ícono
     trashIcon.addEventListener('click', function () {
-        deleteGroupFunction(group.id)
+        deleteGroupFunction(group[0])
     })
 
     // Icono agenda grupo
@@ -243,7 +221,7 @@ function openGroupInfoMenu(group, members) {
     agendaIcon.style.paddingLeft = '10px';
     agendaIcon.style.paddingRight = '10px';
     agendaIcon.addEventListener('click', function () {
-        const date = agendaGroup(group.id);
+        const date = agendaGroup(group[0]);
         window.globalVariable = date;
         manipulate();
         window.globalVariable = "";
@@ -280,7 +258,7 @@ function openGroupInfoMenu(group, members) {
 
     // Agregar un evento de clic al icono de abandonar grupo
     leaveGroup.addEventListener('click', function () {
-        leaveGroupFunction(group.id); // Llamar a la función para abrir el menú flotante
+        leaveGroupFunction(group[0]); // Llamar a la función para abrir el menú flotante
     });
     
     const closeBtn = document.createElement('button')
@@ -359,14 +337,14 @@ function addMemberFunction(id, group) {
         .then(data => {
             // Mostrar los contactos en la consola o en la UI
             console.log('Contactos obtenidos:', data);
-
+            data1 = data.split('\n')
             // Aquí puedes manipular los datos para mostrarlos en la página
             const contactList = document.getElementById('contact-list-member'); // Asegúrate de tener un contenedor en tu HTML con este ID
             contactList.innerHTML = ''; // Limpiar cualquier contenido previo
 
-            data['contacts'].forEach(contact => {
+            data1.forEach(contact => {
                 const listItem = document.createElement('li');
-                listItem.textContent = `${contact.contact_name}`;
+                listItem.textContent = `${contact[0]}`;
 
                 // Crear el ícono de basura
                 const addMemberIcon = document.createElement('i');
@@ -410,41 +388,37 @@ function addMemberFunction(id, group) {
 }
 
 function addMemberEndpoint(group_id, contact) {
-    getUserId(contact.contact_name, contact.contact_email)
-        .then(idUser => {
-            const memberData = {
-                group_id: group_id,
-                user_id: idUser,
-                role: 'member'
-            }
-            // fetch('http://127.0.0.1:8000/api/groups/add-member/', {
-            fetch('http://127.0.0.1:5000/add_member_to_group/', {
-                method: 'POST', 
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(memberData),
-            })
-                .then(response => {
-                    if (!response.ok) {
-                        return response.json().then(err => {
-                            throw new Error(`Error al adicionar miembro: ${err.detail || err}`);
-                        });
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    // Redirigir al usuario
-                    closeMenu3()
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert(error.message);
+
+    const memberData = {
+        group_id: group_id,
+        user_id: contact[1],
+        role: 'member'
+    }
+    // fetch('http://127.0.0.1:8000/api/groups/add-member/', {
+    fetch('http://127.0.0.1:5000/add_member_to_group/', {
+        method: 'POST', 
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(memberData),
+    })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => {
+                    throw new Error(`Error al adicionar miembro: ${err.detail || err}`);
                 });
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Redirigir al usuario
+            closeMenu3()
         })
         .catch(error => {
-            console.error('Error al obtener el ID', error)
-        })
+            console.error('Error:', error);
+            alert(error.message);
+        });
+
 }
 
 // Delete Members
@@ -578,14 +552,14 @@ export function selectUserEvent(id) {
         .then(data => {
             // Mostrar los contactos en la consola o en la UI
             console.log('Contactos obtenidos:', data);
-
+            data1 = data.split('\n')
             // Aquí puedes manipular los datos para mostrarlos en la página
             const contactList = document.getElementById('contact-list-member'); // Asegúrate de tener un contenedor en tu HTML con este ID
             contactList.innerHTML = ''; // Limpiar cualquier contenido previo
 
-            data['contacts'].forEach(contact => {
+            data1.forEach(contact => {
                 const listItem = document.createElement('li');
-                listItem.textContent = `${contact.contact_name}`;
+                listItem.textContent = `${contact[0]}`;
 
                 // Crear el ícono de basura
                 const addMemberIcon = document.createElement('i');
@@ -595,7 +569,7 @@ export function selectUserEvent(id) {
                 addMemberIcon.style.marginLeft = '15px';
 
                 addMemberIcon.addEventListener('click', function () {
-                    const returnValue = getUserId(contact['contact_name'])
+                    const returnValue = contact[1]
                     console.log("return Value", returnValue)
                     return returnValue['<value>']
                 })
@@ -655,14 +629,14 @@ export function selectGroupEvent(id) {
         .then(data => {
             // Mostrar los contactos en la consola o en la UI
             console.log('Grupos obtenidos:', data);
-
+            data1 = data.split('\n')
             // Aquí puedes manipular los datos para mostrarlos en la página
             const groupList = document.getElementById('group-list'); // Asegúrate de tener un contenedor en tu HTML con este ID
             groupList.innerHTML = ''; // Limpiar cualquier contenido previo
 
-            data['groups'].forEach(group => {
+            data1.forEach(group => {
                 const listItem = document.createElement('li');
-                listItem.textContent = `${group.name}`;
+                listItem.textContent = `${group[1]}`;
 
                 // Crear el ícono de basura
                 const addGroupIcon = document.createElement('i');
@@ -672,7 +646,7 @@ export function selectGroupEvent(id) {
                 addGroupIcon.style.marginLeft = '15px';
 
                 addGroupIcon.addEventListener('click', function () {
-                    const returnValue = getGroupId(group['name'])
+                    const returnValue = group[0]
                     console.log("return Value", returnValue)
                     return returnValue['<value>']
                 })
@@ -778,35 +752,3 @@ function agendaGroup(groupID) {
     return returnDate;
 }
 
-// Obtener el username de un usuario a partir de su id
-function getUsername(userID) {
-    // Crear el objeto con los datos
-    const data = {
-        id: userID
-    };
-
-    // Enviar los datos al endpoint
-    return fetch('http://127.0.0.1:5000/contacts/get_username/', {
-        method: 'POST', 
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-    })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => {
-                    throw new Error(`Error al obtener el username del usuario: ${err.detail || err}`);
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            return data.contact
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert(error.message);
-            throw error;
-        });
-}

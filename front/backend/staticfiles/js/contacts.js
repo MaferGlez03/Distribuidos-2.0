@@ -6,76 +6,6 @@ const userData = sessionStorage.getItem('userData');
 // Convierte el string JSON a un objeto JavaScript
 const idActualUser = int(userData);
 
-// Obtener el id de un usuario a partir de su username y su email
-export function getUserId(username) {
-    // Crear el objeto con los datos
-    const data = {
-        username: username
-    };
-
-    // Enviar los datos al endpoint
-    return fetch('http://127.0.0.1:5000/contacts/get_user_id/', {
-        method: 'POST', 
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-    })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => {
-                    throw new Error(`Error al obtener el ID de usuario: ${err.detail || err}`);
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            const textInput = document.getElementById('EventUser')
-            textInput.value = data['contact']
-            closeMenu2();
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert(error.message);
-            throw error;
-        });
-}
-
-// Obtener el id de un grupo a partir de su name
-export function getGroupId(name) {
-    // Crear el objeto con los datos
-    const data = {
-        name: name
-    };
-
-    // Enviar los datos al endpoint
-    return fetch('http://127.0.0.1:5000/get_group_id/', {
-        method: 'POST', 
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-    })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => {
-                    throw new Error(`Error al obtener el ID del grupo: ${err.detail || err}`);
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            const textInput = document.getElementById('EventGroup')
-            textInput.value = data['group']
-            closeMenu2();
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert(error.message);
-            throw error;
-        });
-}
-
 // Adicionar nuevo contacto
 document.getElementById('btn_add_contact').addEventListener('click', function () {
     // Obtener los valores de los inputs
@@ -135,14 +65,14 @@ document.getElementById('list_contacts').addEventListener('click', function () {
         .then(data => {
             // Mostrar los contactos en la consola o en la UI
             console.log('Contactos obtenidos:', data);
-
+            data1 = data.split('\n')
             // Aquí puedes manipular los datos para mostrarlos en la página
             const contactList = document.getElementById('contact-list'); // Asegúrate de tener un contenedor en tu HTML con este ID
             contactList.innerHTML = ''; // Limpiar cualquier contenido previo
 
-            data['contacts'].forEach(contact => {
+            data1.forEach(contact => {
                 const listItem = document.createElement('li');
-                listItem.textContent = `${contact.contact_name}`;
+                listItem.textContent = `${contact[0]}`; //name
 
                 // Crear el ícono de basura
                 const trashIcon = document.createElement('i');
@@ -150,7 +80,7 @@ document.getElementById('list_contacts').addEventListener('click', function () {
                 trashIcon.style.paddingLeft = '5px'; // Espacio entre el nombre y el ícono
                 trashIcon.addEventListener('click', function () {
                     console.log('Borro')
-                    deleteGroupFunction(contact.id)
+                    deleteGroupFunction(contact[1]) //id
                 })
 
                 // Agregar el ícono al elemento de lista
