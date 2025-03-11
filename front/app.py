@@ -99,9 +99,10 @@ def static_files(filename):
 # ----------------------------
 # Endpoints para Usuarios
 # ----------------------------
+chord_id = 0
+username = ''
 
 # Endpoint para registrar usuario
-
 @app.route('/sign_up/', methods=['POST'])
 def sign_up():
     data = request.get_json()
@@ -114,9 +115,9 @@ def sign_up():
     if "registered" in response.lower():  # Suponiendo que el servidor devuelve "éxito" en caso de registro exitoso
         chord_id = user_id
         username = name# Actualizar chord_id con el ID del usuario registrado
-        return jsonify({'message': f"🔹 Respuesta del servidor: {response}", 'username': name}), 201
+        return jsonify({'message': f"🔹 Respuesta del servidor", 'user': response}), 201
     else:
-        return jsonify({'message': 'Error al registrar el usuario (posible email duplicado)', 'user': name}), 400
+        return jsonify({'message': 'Error al registrar el usuario', 'user': response}), 400
 
 # Endpoint para iniciar sesión
 @app.route('/log_in/', methods=['POST'])
@@ -130,7 +131,7 @@ def log_in():
     if "logged" in response.lower():  # Suponiendo que el servidor devuelve "éxito" en caso de registro exitoso
         chord_id = user_id
         username = user_name# Actualizar chord_id con el ID del usuario registrado
-        return jsonify({'message': f'Ingreso exitoso: {response}', 'user': user_name}), 201
+        return jsonify({'message': f'Ingreso exitoso:', 'user': response}), 201
     else:
         return jsonify({'message': 'Usuario no registrado'}), 401
 
