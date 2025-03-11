@@ -1,11 +1,10 @@
 import {closeMenu} from './calendar.js';
 import {closeMenu2} from './groups.js';
 
-const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
 const userData = sessionStorage.getItem('userData');
 
 // Convierte el string JSON a un objeto JavaScript
-const userDataObject = JSON.parse(userData);
+const idActualUser = int(userData);
 
 // Obtener el id de un usuario a partir de su username y su email
 export function getUserId(username) {
@@ -19,7 +18,6 @@ export function getUserId(username) {
         method: 'POST', 
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Token ${token}`,
         },
         body: JSON.stringify(data),
     })
@@ -55,7 +53,6 @@ export function getGroupId(name) {
         method: 'POST', 
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Token ${token}`,
         },
         body: JSON.stringify(data),
     })
@@ -88,7 +85,7 @@ document.getElementById('btn_add_contact').addEventListener('click', function ()
             const contactData = {
                 user_id: id,
                 contact_name: username,
-                owner_id: userDataObject.id
+                owner_id: idActualUser
             }
         
         
@@ -97,7 +94,6 @@ document.getElementById('btn_add_contact').addEventListener('click', function ()
                 method: 'POST', 
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Token ${token}`,
                 },
                 body: JSON.stringify(contactData),
             })
@@ -127,11 +123,10 @@ document.getElementById('btn_add_contact').addEventListener('click', function ()
 document.getElementById('list_contacts').addEventListener('click', function () {
     // Realizar la solicitud GET al endpoint de contactos
     // fetch('http://127.0.0.1:5000/api/contacts/', {
-    fetch(`http://127.0.0.1:5000/contacts/${userDataObject.id}`, {
+    fetch(`http://127.0.0.1:5000/contacts/${idActualUser}`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Token ${token}`, // Token para autenticación
         },
     })
         .then(response => {
@@ -183,7 +178,6 @@ function deleteGroupFunction(contactId) {
         method: 'DELETE', 
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Token ${token}`,
         },
     })
         .then(response => {

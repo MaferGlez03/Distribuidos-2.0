@@ -13,8 +13,8 @@ BROADCAST_IP = "255.255.255.255"
 UDP_PORT = 8888
 
 # Variable global para almacenar el ID del usuario registrado
-chord_id = None
-username=None
+global chord_id
+global username
 
 # Obtén el directorio de trabajo actual
 basedir = os.getcwd()
@@ -99,10 +99,8 @@ def static_files(filename):
 # ----------------------------
 # Endpoints para Usuarios
 # ----------------------------
-chord_id = 0
-username = ''
 
-# Endpoint para registrar usuario
+#* Endpoint para registrar usuario
 @app.route('/sign_up/', methods=['POST'])
 def sign_up():
     data = request.get_json()
@@ -112,14 +110,16 @@ def sign_up():
     user_id = generate_id_(name)
     server_ip = available_server()
     response = connect_to_server(server_ip, 8000, "reg", f"{user_id}|{name}|{email}|{password}")
-    if "registered" in response.lower():  # Suponiendo que el servidor devuelve "éxito" en caso de registro exitoso
+    if not response is None:  # Suponiendo que el servidor devuelve "éxito" en caso de registro exitoso
+        global chord_id
+        global username
         chord_id = user_id
         username = name# Actualizar chord_id con el ID del usuario registrado
         return jsonify({'message': f"🔹 Respuesta del servidor", 'user': response}), 201
     else:
-        return jsonify({'message': 'Error al registrar el usuario', 'user': response}), 400
+        return jsonify({'message': 'Error al registrar el usuario'}), 400
 
-# Endpoint para iniciar sesión
+#* Endpoint para iniciar sesión
 @app.route('/log_in/', methods=['POST'])
 def log_in():
     server_ip = available_server()
@@ -128,7 +128,9 @@ def log_in():
     password = data.get('password')
     user_id = generate_id_(user_name)
     response = connect_to_server(server_ip, 8000, "log", f"{id}|{user_name}|{password}")
-    if "logged" in response.lower():  # Suponiendo que el servidor devuelve "éxito" en caso de registro exitoso
+    if not response is None:  # Suponiendo que el servidor devuelve "éxito" en caso de registro exitoso
+        global chord_id
+        global username
         chord_id = user_id
         username = user_name# Actualizar chord_id con el ID del usuario registrado
         return jsonify({'message': f'Ingreso exitoso:', 'user': response}), 201
@@ -204,12 +206,11 @@ def create_event():
     data = request.get_json()
     event_name = data.get('title')
     event_date = data.get('start_time')  # Formato: 'YYYY-MM-DD'
-    owner = data.get('owner_id')
-    #! AQUI ENTRA UN ID Y SE TRABAJA COMO SI ENTRARA UN USERNAME
+    owner_id = data.get('owner_id')
     privacy = data.get('privacy')
-    group_id = data.get('group', None)
-    response = connect_to_server(server_ip, 8000, "create_event", f"{chord_id}|{event_name}|{event_date}|{owner}|{privacy}")
-    if response:
+    response = connect_to_server(server_ip, 8000, "create_event", f"{chord_id}|{event_name}|{event_date}|{owner_id}|{privacy}")
+    bool_response = bool(response)
+    if bool_response:
         return jsonify({'message': 'Evento creado exitosamente'}), 201
     else:
         return jsonify({'message': 'Error al crear el evento'}), 400

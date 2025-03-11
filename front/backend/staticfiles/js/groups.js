@@ -7,9 +7,8 @@ import {manipulate} from './calendar.js';
 console.log("sessionStorage", sessionStorage)
 console.log("localStorage", localStorage)
 
-const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
 const userData = sessionStorage.getItem('userData');
-const user = JSON.parse(userData);
+const idActualUser = int(userData);
 
 
 window.globalVariable = '';
@@ -32,13 +31,13 @@ document.getElementById('btn_create_group').addEventListener('click', function (
         data = {
             name: GroupName,
             is_hierarchical: true,
-            owner_id: user.id
+            owner_id: idActualUser
         };
     } else {
         data = {
             name: GroupName,
             is_hierarchical: false,
-            owner_id: user.id
+            owner_id: idActualUser
         };
     }
 
@@ -48,7 +47,6 @@ document.getElementById('btn_create_group').addEventListener('click', function (
         method: 'POST', 
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Token ${token}`,
         },
         body: JSON.stringify(data),
     })
@@ -74,11 +72,10 @@ document.getElementById('btn_create_group').addEventListener('click', function (
 document.getElementById('list_groups').addEventListener('click', function () {
     // Realizar la solicitud GET al endpoint de grupos
     // fetch('http://127.0.0.1:8000/api/groups/', {
-    fetch(`http://127.0.0.1:5000/list_groups/${user.id}/`, {
+    fetch(`http://127.0.0.1:5000/list_groups/${idActualUser}/`, {
         method: 'GET',
         headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Token ${token}`, // Token para autenticación
+            'Content-Type': 'application/json', // Token para autenticación
         },
     })
         .then(response => {
@@ -122,7 +119,6 @@ document.getElementById('list_groups').addEventListener('click', function () {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Token ${token}`, // Token para autenticación
                         },
                     })
                         .then(response => {
@@ -277,7 +273,7 @@ function openGroupInfoMenu(group, members) {
 
     // Agregar un evento de clic al icono de addMember
     addMember.addEventListener('click', function () {
-        addMemberFunction(user.id, group); // Llamar a la función para abrir el menú flotante
+        addMemberFunction(idActualUser, group); // Llamar a la función para abrir el menú flotante
         closeMenu2();
         closeMenu();
     });
@@ -348,8 +344,7 @@ function addMemberFunction(id, group) {
     fetch(`http://127.0.0.1:5000/contacts/${id}`, {
         method: 'GET',
         headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Token ${token}`, // Token para autenticación
+            'Content-Type': 'application/json', // Token para autenticación
         },
     })
         .then(response => {
@@ -427,7 +422,6 @@ function addMemberEndpoint(group_id, contact) {
                 method: 'POST', 
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Token ${token}`,
                 },
                 body: JSON.stringify(memberData),
             })
@@ -456,11 +450,10 @@ function addMemberEndpoint(group_id, contact) {
 // Delete Members
 function deleteMemberFunction(groupId, memberId) {
     // fetch(`http://127.0.0.1:5000/api/groups/${groupId}/remove-member/${memberId}/`, {
-    fetch(`http://127.0.0.1:5000/remove_member_from_group/${groupId}/${memberId}/${user.id}`, {
+    fetch(`http://127.0.0.1:5000/remove_member_from_group/${groupId}/${memberId}/${idActualUser}`, {
         method: 'DELETE', 
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Token ${token}`,
         },
     })
         .then(response => {
@@ -499,7 +492,6 @@ function deleteGroupFunction(groupId) {
         method: 'DELETE', 
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Token ${token}`,
         },
     })
         .then(response => {
@@ -529,11 +521,10 @@ function deleteGroupFunction(groupId) {
 }
 
 function leaveGroupFunction(groupId) {
-    fetch(`http://127.0.0.1:5000/leave_group/${groupId}/${user.id}`, {
+    fetch(`http://127.0.0.1:5000/leave_group/${groupId}/${idActualUser}`, {
         method: 'DELETE', 
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Token ${token}`,
         },
     })
         .then(response => {
@@ -572,8 +563,7 @@ export function selectUserEvent(id) {
     fetch(`http://127.0.0.1:5000/contacts/${id}`, {
         method: 'GET',
         headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Token ${token}`, // Token para autenticación
+            'Content-Type': 'application/json', // Token para autenticación
         },
     })
         .then(response => {
@@ -650,8 +640,7 @@ export function selectGroupEvent(id) {
     fetch(`http://127.0.0.1:5000/list_groups/${id}`, {
         method: 'GET',
         headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Token ${token}`, // Token para autenticación
+            'Content-Type': 'application/json', // Token para autenticación
         },
     })
         .then(response => {
@@ -729,7 +718,6 @@ function agendaGroup1(groupID) {
         method: 'GET', 
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Token ${token}`,
         },
     })
         .then(response => {
@@ -756,7 +744,6 @@ function agendaMember1() {
         method: 'GET', 
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Token ${token}`,
         },
     })
         .then(response => {
@@ -803,7 +790,6 @@ function getUsername(userID) {
         method: 'POST', 
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Token ${token}`,
         },
         body: JSON.stringify(data),
     })

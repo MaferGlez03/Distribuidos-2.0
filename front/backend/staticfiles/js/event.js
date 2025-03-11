@@ -2,9 +2,8 @@ import {manipulate} from './calendar.js';
 import {selectUserEvent} from './groups.js';
 import {selectGroupEvent} from './groups.js';
 
-const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
 const userData = localStorage.getItem('userData') || sessionStorage.getItem('userData');
-const user = JSON.parse(userData);
+const idActualUser = int(userData);
 
 // Variables globales
 const overlay = document.getElementById('overlay');
@@ -34,13 +33,13 @@ document.getElementById('btn_create_event').addEventListener('click', async func
     const rawData = {
         title: eventName,
         start_time: `${eventDateInit}`,
-        owner_id: user.id,
+        owner_id: idActualUser,
         privacy: eventPrivacy,
         group: groupEvent || userEvent || null
     };
 
     const dataF = Object.fromEntries(Object.entries(rawData).filter(([_, value]) => value !== null));
-    console.log("userdata", user)
+    console.log("userdata", idActualUser)
 
     try {
         // Enviar los datos al endpoint
@@ -48,7 +47,6 @@ document.getElementById('btn_create_event').addEventListener('click', async func
             method: 'POST', 
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Token ${token}`,
             },
             body: JSON.stringify(dataF),
             
@@ -72,22 +70,21 @@ document.getElementById('btn_create_event').addEventListener('click', async func
 
 // Boton de Select Group en Create a new Event
 document.getElementById('btn_select_group').addEventListener('click', function(){
-    const idUserEvent = selectGroupEvent(user.id); // Llamar a la función para abrir el menú flotante
+    const idUserEvent = selectGroupEvent(idActualUser); // Llamar a la función para abrir el menú flotante
 })
 
 // Boton de Select Contact en Create a new Event
 document.getElementById('btn_select_contact').addEventListener('click', function(){
-    const idUserEvent = selectUserEvent(user.id); // Llamar a la función para abrir el menú flotante
+    const idUserEvent = selectUserEvent(idActualUser); // Llamar a la función para abrir el menú flotante
 })
 
 // View Event
 async function viewEvent(idEvent) {
     try {
-        const response = await fetch(`http://127.0.0.1:5000/list_events_pending/${user.id}/`, {
+        const response = await fetch(`http://127.0.0.1:5000/list_events_pending/${idActualUser}/`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Token ${token}`,
             },
         });
 
@@ -115,11 +112,10 @@ async function viewEvent(idEvent) {
 
 document.getElementById('alertsDropdown').addEventListener('click', function () {
     // return fetch('http://127.0.0.1:5000/api/events/pending/', {
-    return fetch(`http://127.0.0.1:5000/list_events_pending/${user.id}/`, {
+    return fetch(`http://127.0.0.1:5000/list_events_pending/${idActualUser}/`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Token ${token}`, // Token para autenticación
         },
     })
         .then(response => {
@@ -346,7 +342,6 @@ document.getElementById('acceptBtn').addEventListener('click', function () {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Token ${token}`, // Token para autenticación
         },
         body: {},
     })
@@ -379,7 +374,6 @@ document.getElementById('declineBtn').addEventListener('click', function () {
         method: 'DELETE',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Token ${token}`, // Token para autenticación
         },
         body: {},
     })

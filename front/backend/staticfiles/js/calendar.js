@@ -1,10 +1,9 @@
-const token = sessionStorage.getItem('authToken');
 const userData = sessionStorage.getItem('userData');
 
 console.log(userData)
 
 // Convierte el string JSON a un objeto JavaScript
-const userDataObject = JSON.parse(userData);
+const idActualUser = int(userData);
 window.globalVariable = ""
 
 let date = new Date();
@@ -190,17 +189,16 @@ export function dailyEvents(day, url) {
     if (url) {
         if (url !== "") {
             // urlFinal = 'http://127.0.0.1:5000/api/events/${url}'
-            urlFinal = `http://127.0.0.1:5000/list_events/${userDataObject.id}`
+            urlFinal = `http://127.0.0.1:5000/list_events/${idActualUser}`
         }
     } else {
         // urlFinal = 'http://127.0.0.1:5000/api/events/'
-        urlFinal = `http://127.0.0.1:5000/list_events/${userDataObject.id}`
+        urlFinal = `http://127.0.0.1:5000/list_events/${idActualUser}`
     }
     return fetch(urlFinal, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Token ${token}`, // Token para autenticación
         },
     })
         .then(response => {
