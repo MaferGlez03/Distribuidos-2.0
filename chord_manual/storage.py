@@ -344,9 +344,9 @@ class Database:
             if role == 'admin' and admin_id != user_id:
                 self.session.delete(member)
                 self.session.commit()
-                return 'Miembro eliminado del grupo', 200
-            return 'No tiene permisos para eliminar miembros', 403
-        return 'Error al eliminar miembro del grupo', 400  # El miembro no existe en el grupo
+                return True
+            return False
+        return False # El miembro no existe en el grupo
 
     def list_groups(self, user_id: int) -> list:
         """
@@ -364,7 +364,7 @@ class Database:
         Lista los miembros de un grupo
         """
         members = self.session.query(GroupMember).filter(GroupMember.group_id == group_id).all()
-        return [member.user_id for member in members]
+        return [(member.user_id, self.getUsername(member.user_id)) for member in members]
     
     def delete_group(self, group_id: int) -> bool:
         """

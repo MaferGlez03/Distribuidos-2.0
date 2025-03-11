@@ -294,7 +294,7 @@ class ChordNode:
         success = self.db.create_group_event(
             name, date, owner_id, group_id)
         print(success)
-        return f"Event created: {name}" if success else f"Failed to create event {name}"
+        return f"{success}"
 
     def confirm_event(self, id: int, user_id: int, event_id: int) -> str:
         print(f"confirm_event {id} {self.id}")
@@ -718,11 +718,11 @@ class ChordNode:
     def _create_group(self, owner_id: str, name: str) -> str:
         real_id = self.db.getUserID(owner_id)
         success = self.db.create_group(name, real_id)
-        return "Group created" if success else "Failed to create group"
+        return f"{success}"
 
     def _delete_group(self, id:int) -> str:
         success = self.db.delete_group(id)
-        return "Group deleted" if success else "Failed to delete group"
+        return f'{success}'
 
     def _leave_group(self, owner_id: int, name: str) -> str:
         success = self.db.leave_group(name)
@@ -730,23 +730,23 @@ class ChordNode:
 
     def _add_member_to_group(self, group_id: int, user_id: int, role: str) -> str:
         success = self.db.add_member_to_group(group_id, user_id, role)
-        return "Member added" if success else "Failed to add member"
+        return f"{success}"
 
     def _remove_member_from_group(self, group_id: int, user_id: int, user:str) -> str:
         admin = self.db.getUserID(user)
         success = self.db.remove_member_from_group(group_id, user_id, admin)
-        return "Member removed" if success else "Failed to remove member"
+        return f"{success}"
 
     def _list_group(self, user_id: str) -> str:
         real_id = self.db.getUserID(user_id)
         agenda = self.db.list_groups(real_id)
-        groups_list = [str({'id': g[0], 'name': g[1]}) for g in agenda]
+        groups_list = [str((g[0],  g[1])) for g in agenda]
         return "\n".join(groups_list)
 
     def _list_member(self, group_id: int) -> str:
         agenda = self.db.list_members(group_id)
         agenda0 = [str(a) for a in agenda]
-        return " | ".join(agenda0)
+        return " \n ".join(agenda0)
 
     def _list_personal_agenda(self, user_id: int) -> str:
         agenda = self.db.list_personal_agenda(user_id)
