@@ -167,7 +167,7 @@ class Database:
         """
         user = self.session.query(User).filter_by(name=username).first()
         if user and user.check_password(password):
-            return user.id
+            return (user.id,username)
         return None
 
     # Métodos para contactos
