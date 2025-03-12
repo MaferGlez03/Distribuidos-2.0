@@ -740,6 +740,7 @@ class ChordNode:
         real_id = self.db.getUserID(user_id)
         agenda = self.db.list_groups(real_id)
         groups_list = [str((g[0],  g[1])) for g in agenda]
+        print( groups_list)
         return "\n".join(groups_list)
 
     def _list_member(self, group_id: int) -> str:
@@ -909,6 +910,7 @@ class ChordNode:
             # Listar grupos de un usuario
             id = int(data[1])
             user = data[2]
+            print(f"VOY A LISTAR YO{user} CON CHORDID{id}")
             response = self.list_group(id,user)
         elif option == LIST_MEMBER:
             # Listar grupos de un usuario
