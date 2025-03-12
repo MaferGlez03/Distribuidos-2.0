@@ -21,6 +21,7 @@ const months = [
 ];
 
 // Function to generate the calendar
+
 export const manipulate = async () => {
     return new Promise(async (resolve, reject) => {
         try {

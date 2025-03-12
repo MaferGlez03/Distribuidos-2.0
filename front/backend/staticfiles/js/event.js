@@ -63,7 +63,7 @@ document.getElementById('btn_create_event').addEventListener('click', async func
         const result = await response.json();
 
         // Llama a manipulate y espera a que se complete
-        await manipulate();
+        // await manipulate();
         closeMenu();
 
     } catch (error) {

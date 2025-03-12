@@ -1,4 +1,4 @@
-from storage import Contact, Group, User, GroupMember, Event
+from storage import Contact, Group, User, GroupMember, Event, UserAgenda
 import hashlib
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, joinedload
@@ -28,6 +28,7 @@ class HandleData:
             joinedload(User.contacts),  # Cargar contactos
             joinedload(User.events),    # Cargar eventos
             joinedload(User.agenda),  # Cargar contactos
+            joinedload(User.groups),    # Cargar eventos
             joinedload(User.groups),    # Cargar eventos
         ).all()
         for user in users:
@@ -59,8 +60,18 @@ class HandleData:
                 for group in user.groups:
                     result += 'groups¡'
                     result += f'{group.id}|{group.name}|{group.owner_id}||'
+                    for member in group.members:
+                        result += 'member¡'
+                        result += f'{member.id}|{member.group_id}|{member.admin_id}|{member.user_id}|{member.role}||'
+
+    #                     id = Column(Integer, primary_key=True, autoincrement=True)
+    # group_id = Column(Integer, ForeignKey('groups.id'), nullable=False)
+    # # admin_id = Column(Integer, ForeignKey('admin.id'), nullable=True)  # ID del administrador que añadió al miembro
+    # user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    # role = Column(Enum('admin', 'member', name='role_ty
                 
                 if result[-1] != '¡': result += '|'
+                else: result += '|||'
                 self.garbage.append(user.id)  # Añadir el usuario a la lista de garbage
         
         # Eliminar los datos si delete es True
@@ -72,36 +83,40 @@ class HandleData:
         """
         Crea datos en la base de datos a partir de una cadena formateada.
         """
-        print(data)
-        users = data.split('|||')  # Dividir la cadena en usuarios
-        print(users)
+        if len(data) == 0:
+            return
+        print("data", data)
+        users = list(filter(None, data.split('|||')))  # Dividir la cadena en usuarios
+        print("users", users)
         for user in users:
             if user != '':
-                user_data = user.split('¡¡')  # Dividir en datos del usuario, data
-                print(user_data)
-                user1 = user_data[0].split('|')  # Datos del Usuario
-                print(user1)
+                user_data = list(filter(None, user.split('¡¡')))  # Dividir en datos del usuario, data
+                print("user_data", user_data)
+                user1 = list(filter(None, user_data[0].split('|')))  # Datos del Usuario
+                print("user1", user1)
                 user_id = user1[0]
                 print(user_id)
-                data = user_data[1]
-                print(data)
-                tablas = data.split('||')
-                print(tablas)
-                
+                if len(user_data) > 1:
+                    data = user_data[1]
+                    print(data)
+                    tablas = list(filter(None, data.split('||')))
+                    print(tablas)
+                else:
+                    tablas = ''
                 # Crear el usuario si no existe
                 user_db = session.query(User).filter_by(id=user_id).first()
                 if not user_db:
                     user_db = User(id=user_id, name=user1[1], email=user1[2], password_hash=user1[3])
                     session.add(user_db)
                 
-                if tablas[0] == '':
+                if tablas == '':
                     session.commit()
-                    return
+                    continue
                 # Procesar los datos del usuario
-                listica = [tabla.split('¡') for tabla in tablas]
+                listica = [list(filter(None, tabla.split('¡'))) for tabla in tablas]
                 print(f"listica: {listica}")
-                for titulo, content in [tabla.split('¡') for tabla in tablas]:
-                    info = content.split('|')
+                for titulo, content in [list(filter(None, tabla.split('¡'))) for tabla in tablas]:
+                    info = list(filter(None, content.split('|')))
                     if titulo == 'events':
                         # Crear un evento
                         event_id = int(info[0])
@@ -181,6 +196,8 @@ class HandleData:
                     session.query(Event).filter_by(owner_id=user_id).delete()
                     session.query(Contact).filter_by(user_id=user_id).delete()
                     session.query(Group).filter_by(owner_id=user_id).delete()
+                    session.query(UserAgenda).filter_by(user_id=user_id).delete()
+                    session.query(GroupMember).filter_by(user_id=user_id).delete()
                     session.delete(user)
             
             # Guardar los cambios en la base de datos
