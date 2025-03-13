@@ -29,7 +29,6 @@ class HandleData:
             joinedload(User.events),    # Cargar eventos
             joinedload(User.agenda),  # Cargar contactos
             joinedload(User.groups),    # Cargar eventos
-            joinedload(User.groups),    # Cargar eventos
         ).all()
         for user in users:
             user_id = self.set_id(user.email)  # Usamos el email para generar el ID
@@ -62,13 +61,7 @@ class HandleData:
                     result += f'{group.id}|{group.name}|{group.owner_id}||'
                     for member in group.members:
                         result += 'member¡'
-                        result += f'{member.id}|{member.group_id}|{member.admin_id}|{member.user_id}|{member.role}||'
-
-    #                     id = Column(Integer, primary_key=True, autoincrement=True)
-    # group_id = Column(Integer, ForeignKey('groups.id'), nullable=False)
-    # # admin_id = Column(Integer, ForeignKey('admin.id'), nullable=True)  # ID del administrador que añadió al miembro
-    # user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    # role = Column(Enum('admin', 'member', name='role_ty
+                        result += f'{member.id}|{member.group_id}|{member.user_id}|{member.role}||'
                 
                 if result[-1] != '¡': result += '|'
                 else: result += '|||'
@@ -126,17 +119,19 @@ class HandleData:
                         event_privacy = info[4]
                         event_group_id = int(info[5]) if isinstance(info[5], str) and info[5].isdigit() else None
                         event_status = info[6]
-                        
-                        event = Event(
-                            id=event_id,
-                            name=event_name,
-                            date=event_date,
-                            owner_id=event_owner_id,
-                            privacy=event_privacy,
-                            group_id=event_group_id,
-                            status=event_status,
-                        )
-                        session.add(event)
+
+                        event0 = session.query(Event).filter_by(id=event_id).first()
+                        if not event0:
+                            event = Event(
+                                id=event_id,
+                                name=event_name,
+                                date=event_date,
+                                owner_id=event_owner_id,
+                                privacy=event_privacy,
+                                group_id=event_group_id,
+                                status=event_status,
+                            )
+                            session.add(event)
                     
                     elif titulo == 'contacts':
                         # Crear un contacto
@@ -144,27 +139,31 @@ class HandleData:
                         contact_user_id = int(info[1])
                         contact_owner_id = int(info[2]) # Se cambia por user_id
                         contact_name = info[3]
-                        
-                        contact = Contact(
-                            id=contact_id,
-                            user_id=contact_user_id,
-                            owner_id=user_id,
-                            contact_name=contact_name
-                        )
-                        session.add(contact)
+
+                        contact0 = session.query(Contact).filter_by(id=contact_id).first()
+                        if not contact0:
+                            contact = Contact(
+                                id=contact_id,
+                                user_id=contact_user_id,
+                                owner_id=user_id,
+                                contact_name=contact_name
+                            )
+                            session.add(contact)
                     
                     elif titulo == 'groups':
                         # Crear un grupo
                         group_id = int(info[0]),
                         group_name = info[1],
                         group_owner_id = int(info[2]) # Se cambia por user_id
-                        
-                        group = Group(
-                            id=group_id,
-                            name=group_name,
-                            owner_id=user_id
-                        )
-                        session.add(group)
+
+                        group0 = session.query(Group).filter_by(id=group_id).first()
+                        if not group0:
+                            group = Group(
+                                id=group_id,
+                                name=group_name,
+                                owner_id=user_id
+                            )
+                            session.add(group)
 
                     elif titulo == 'group_members':
                         # Crear un group member
@@ -173,13 +172,15 @@ class HandleData:
                         group_user_id = int(info[2]) #  Se cambia por user_id
                         group_role = info[3]
 
-                        group_member = GroupMember(
-                            id=group_id,
-                            group_id=group_group_id,
-                            user_id=user_id,
-                            role=group_role
-                        )
-                        session.add(group_member)
+                        group_member0 = session.query(GroupMember).filter_by(id=group_id).first()
+                        if not group_member0:
+                            group_member = GroupMember(
+                                id=group_id,
+                                group_id=group_group_id,
+                                user_id=user_id,
+                                role=group_role
+                            )
+                            session.add(group_member)
         
         # Guardar los cambios en la base de datos
         session.commit()

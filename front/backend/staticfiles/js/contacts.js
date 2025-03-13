@@ -1,5 +1,4 @@
-import {closeMenu} from './calendar.js';
-import {closeMenu2} from './groups.js';
+import { closeMenu } from "./calendar.js";
 
 const userData = localStorage.getItem('user_id') || sessionStorage.getItem('user_id');
 const username = localStorage.getItem('username') || sessionStorage.getItem('username');
@@ -50,6 +49,7 @@ document.getElementById('btn_add_contact').addEventListener('click', function ()
 // List Contacts
 document.getElementById('list_contacts').addEventListener('click', function () {
     // Realizar la solicitud GET al endpoint de contactos
+    const menu = document.getElementById('menu3');
     fetch(`http://127.0.0.1:5000/contacts/${idActualUser}/${chord_id}`, {
         method: 'GET',
         headers: {
@@ -66,10 +66,7 @@ document.getElementById('list_contacts').addEventListener('click', function () {
             return response.json();
         })
         .then(data => {
-            let data1 = data.split('\n')
-            if (data.length === 0) {
-                data1 = data
-            }
+            let data1 = data ? data.split('|').map(item => item.trim()) : [];
             // Mostrar los contactos en la consola o en la UI
             console.log('Contactos obtenidos:', data);
             // Aquí puedes manipular los datos para mostrarlos en la página
@@ -77,9 +74,17 @@ document.getElementById('list_contacts').addEventListener('click', function () {
             contactList.innerHTML = ''; // Limpiar cualquier contenido previo
 
             data1.forEach(contact0 => {
-                const listItem = document.createElement('li');
-                const contact1 = contact0.replace(/^\(/, "[").replace(/\)$/, "]");
-                const contact = JSON.parse(contact1)
+                const contact1 = contact0
+                    .replace(/^\(/, "[")  // Reemplaza paréntesis de apertura
+                    .replace(/\)$/, "]")  // Reemplaza paréntesis de cierre
+                    .slice(1, -1).split(',');
+                // Limpiar los elementos (eliminar espacios y comillas)
+                let contact = contact1.map(c => {
+                    // Eliminar espacios y comillas
+                    c = c.trim().replace(/'/g, '').replace(/"/g, '');
+                    // Convertir a número si es posible
+                    return isNaN(c) ? c : Number(c);
+                });
 
                 listItem.textContent = `${contact[0]}`; //name
 
@@ -104,6 +109,21 @@ document.getElementById('list_contacts').addEventListener('click', function () {
             console.error('Error:', error.message);
             alert(error.message);
         });
+
+    activeMenu3 = document.getElementById('menu7');
+
+    // Muestra el overlay y el menú flotante correspondiente
+    if (menu) {
+        overlay3.style.display = 'flex';
+        menu.style.display = 'flex';
+        activeMenu3 = menu; // Guarda el menú activo
+    }
+
+    // Evento para cerrar menús
+    overlay3.addEventListener('click', closeMenu3);
+    document.querySelectorAll('.closeMenu3').forEach(button => {
+        button.addEventListener('click', closeMenu3);
+    });
 });
 
 function deleteGroupFunction(contactId) {
@@ -137,3 +157,11 @@ function deleteGroupFunction(contactId) {
             alert(error.message);
         });
 }
+
+// function closeMenu() {
+//     if (activeMenu) {
+//         activeMenu.style.display = 'none';
+//         overlay.style.display = 'none';
+//         activeMenu = null; // Reinicia el menú activo
+//     }
+// }

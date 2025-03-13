@@ -9,7 +9,7 @@
 #         with socket.create_connection((server_ip, server_port)) as sock:
 #             with context.wrap_socket(sock, server_hostname="MFSG") as secure_sock:
 #                 secure_sock.sendall(f'{operation}|{data}'.encode('utf-8'))
-#                 return secure_sock.recv(1024).decode()
+#                 return secure_sock.recv(10240).decode()
 #     except Exception as e:
 #         return f"Error en la conexión SSL: {e}"
 import hashlib
@@ -62,7 +62,7 @@ def find_active_server(start_ip, end_ip, port, timeout=1):
 #                 ssl_sock.sendall(f'{op}|{data}'.encode('utf-8'))
 #                 print(f"📤 Datos enviados: {op}|{data}")
 #                 # ✅ Recibir respuesta
-#                 response = ssl_sock.recv(1024)
+#                 response = ssl_sock.recv(10240)
 #                 print(f"📥 Respuesta recibida: {response.decode('utf-8')}")
 #                 return response
 #     except Exception as e:
@@ -76,7 +76,7 @@ def connect_to_server(server_ip, server_port, operation, data):
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             s.connect((server_ip, int(server_port)))  # 🔹 Conectar al servidor TCP
             s.sendall(f'{operation}|{data}'.encode('utf-8'))
-            return s.recv(1024).decode('utf-8').strip()
+            return s.recv(10240).decode('utf-8').strip()
     except Exception as e:
         return f"Error en la conexión: {e}"
 

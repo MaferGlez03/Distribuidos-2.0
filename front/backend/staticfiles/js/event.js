@@ -3,7 +3,7 @@ import {selectUserEvent} from './groups.js';
 import {selectGroupEvent} from './groups.js';
 
 const userData = localStorage.getItem('user_id') || sessionStorage.getItem('user_id');
-const username = localStorage.getItem('username') || sessionStorage.getItem('username');
+const username = localStorage.getItem('username') || sessionStorage.getItem('username').replace(/^["'](.*)["']$/, '$1');
 const chord_id = parseInt(localStorage.getItem('chord_id') || sessionStorage.getItem('chord_id'), 10);
 const idActualUser = parseInt(userData, 10);
 
@@ -31,23 +31,43 @@ document.getElementById('btn_create_event').addEventListener('click', async func
     // const numbers = participantsEvent
     // ? participantsEvent.split(',').map(num => parseFloat(num.trim())).filter(num => !isNaN(num)) 
     // : [];
+    let rawData = {}
+    let url = ''
 
-    const rawData = {
-        title: eventName,
-        start_time: `${eventDateInit}`,
-        owner_id: idActualUser,
-        privacy: eventPrivacy,
-        group: groupEvent || userEvent || null,
-        actualUsername: username,
-        chord_id: chord_id
-    };
+    if (groupEvent){
+        // data de evento grupal
+        rawData = {
+            title: eventName,
+            start_time: `${eventDateInit}`,
+            owner_id: idActualUser,
+            group_id: groupEvent || userEvent,
+            chord_id: chord_id
+        };
+
+        // url de evento grupal
+        url = 'http://127.0.0.1:5000/create_group_event/'
+    }
+    else {
+        // data de evento personal
+        rawData = {
+            title: eventName,
+            start_time: `${eventDateInit}`,
+            owner_id: idActualUser,
+            privacy: eventPrivacy,
+            chord_id: chord_id
+        };
+
+        // url de evento grupal
+        url = 'http://127.0.0.1:5000/create_event/'
+    }
+
 
     const dataF = Object.fromEntries(Object.entries(rawData).filter(([_, value]) => value !== null));
     console.log("userdata", idActualUser)
 
     try {
         // Enviar los datos al endpoint
-        const response = await fetch('http://127.0.0.1:5000/create_event/', {
+        const response = await fetch(url, {
             method: 'POST', 
             headers: {
                 'Content-Type': 'application/json',
@@ -63,7 +83,7 @@ document.getElementById('btn_create_event').addEventListener('click', async func
         const result = await response.json();
 
         // Llama a manipulate y espera a que se complete
-        // await manipulate();
+        await manipulate();
         closeMenu();
 
     } catch (error) {

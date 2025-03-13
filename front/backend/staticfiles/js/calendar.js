@@ -1,5 +1,5 @@
 const userData = localStorage.getItem('user_id') || sessionStorage.getItem('user_id');
-const username = localStorage.getItem('username') || sessionStorage.getItem('username');
+const username = localStorage.getItem('username') || sessionStorage.getItem('username').replace(/^["'](.*)["']$/, '$1');
 const chord_id = parseInt(localStorage.getItem('chord_id') || sessionStorage.getItem('chord_id'), 10);
 const idActualUser = parseInt(userData, 10);
 
@@ -22,69 +22,126 @@ const months = [
 
 // Function to generate the calendar
 
+// export const manipulate = async () => {
+//     return new Promise(async (resolve, reject) => {
+//         try {
+//             let dayone = new Date(year, month, 1).getDay(); // Posicion en la semana del primer dia del mes contando el 0
+//             let lastdate = new Date(year, month + 1, 0).getDate();// Cantidad de dias del mes actual
+//             let dayend = new Date(year, month, lastdate).getDay(); // Posicion en la semana del ultimo dia del mes contando el 0
+//             let monthlastdate = new Date(year, month, 0).getDate(); // Cantidad de dias del mes anterior
+//             let lit = "";
+            
+//             // Agregar las fechas del mes anterior
+//             for (let i = dayone; i > 0; i--) {
+//                 lit += `<li class="inactive">${monthlastdate - i + 1}</li>`;
+//             }
+
+//             // Agregar las fechas del mes actual
+//             let promises = [];
+//             for (let i = 1; i <= lastdate; i++) {
+//                 let isToday = 
+//                     i === date.getDate()
+//                     && month === new Date().getMonth()
+//                     && year === new Date().getFullYear()
+//                     ? "active"
+//                     : "";
+
+//                 let dayI = i < 10 ? `0${i}` : i;
+//                 let listItem = `<li class="${isToday}" id="day-${year}-${month + 1}-${dayI}">${i}</li>`;
+//                 lit += listItem;
+
+//                 // Solicitar eventos para el día actual
+//                 const dayString = `${year}-${month + 1}-${dayI}`;
+//                 const fullDate = new Date(dayString)
+//                 const noHours = fullDate.toISOString().split('T')[0]
+//                 // const adjustDate = `${fixMonth(adjustDateByDays(dayString, 1))}`
+//                 promises.push(
+
+//                     getMonthlyEvents(noHours).then((dayEvents) => {
+//                         const dayElement = document.querySelector(`#day-${dayString}`);
+//                         if (dayElement) {
+//                             let eventsHTML = "";
+//                             dayEvents.forEach(event => {
+//                                 eventsHTML += `<p class="event-title">${event[0]}</p>`;
+//                             });
+//                             dayElement.innerHTML += eventsHTML; // Añade los eventos sin reemplazar
+//                         }
+//                     }).catch(error => {
+//                         console.error('Error:', error.message);
+//                     })
+//                 );
+//             }
+
+//             // Agregar las fechas del próximo mes
+//             for (let i = dayend; i < 6; i++) {
+//                 lit += `<li class="inactive">${i - dayend + 1}</li>`;
+//             }
+
+//             currdate.innerText = `${months[month]} ${year}`;
+//             day.innerHTML = lit;
+
+//             // Esperar a que todas las promesas se resuelvan
+//             await Promise.all(promises);
+
+//             resolve();
+//         } catch (error) {
+//             console.error('Error en manipulate:', error);
+//             reject(error);
+//         }
+//     });
+// };
+
 export const manipulate = async () => {
     return new Promise(async (resolve, reject) => {
         try {
-            let dayone = new Date(year, month, 1).getDay(); // Posicion en la semana del primer dia del mes contando el 0
-            let lastdate = new Date(year, month + 1, 0).getDate();// Cantidad de dias del mes actual
-            let dayend = new Date(year, month, lastdate).getDay(); // Posicion en la semana del ultimo dia del mes contando el 0
-            let monthlastdate = new Date(year, month, 0).getDate(); // Cantidad de dias del mes anterior
+            let dayone = new Date(year, month, 1).getDay(); 
+            let lastdate = new Date(year, month + 1, 0).getDate();
+            let dayend = new Date(year, month, lastdate).getDay();
+            let monthlastdate = new Date(year, month, 0).getDate(); 
             let lit = "";
-            
+
+            // Obtener eventos de todo el mes
+            let eventsByDay = await getMonthlyEvents(year, month + 1);
+
             // Agregar las fechas del mes anterior
             for (let i = dayone; i > 0; i--) {
                 lit += `<li class="inactive">${monthlastdate - i + 1}</li>`;
             }
 
-            // Agregar las fechas del mes actual
-            let promises = [];
+            console.log("eventsByDay: ", eventsByDay)
+            console.log("eventsByDay: ", typeof eventsByDay)
+            // Agregar las fechas del mes actual con eventos
             for (let i = 1; i <= lastdate; i++) {
-                let isToday = 
-                    i === date.getDate()
-                    && month === new Date().getMonth()
-                    && year === new Date().getFullYear()
-                    ? "active"
-                    : "";
+                let isToday =
+                    i === date.getDate() &&
+                    month === new Date().getMonth() &&
+                    year === new Date().getFullYear()
+                        ? "active"
+                        : "";
 
                 let dayI = i < 10 ? `0${i}` : i;
-                let listItem = `<li class="${isToday}" id="day-${year}-${month + 1}-${dayI}">${i}</li>`;
-                lit += listItem;
+                let dayString = `${year}-${month + 1}-${dayI}`;
+                let formatDayString = formatearFecha(dayString)
+                console.log(dayString)
+                console.log(typeof dayString)
+                let dayDate = new Date(dayString)
+                console.log(dayDate)
+                console.log(typeof dayDate)
+                console.log(eventsByDay[dayString])
+                console.log(eventsByDay[dayDate])
+                console.log(formatDayString)
+                console.log(typeof formatDayString)
+                console.log(eventsByDay[formatDayString])
+                
+                // Obtener eventos del día
+                let eventsHTML = "";
+                if (eventsByDay[formatDayString]) {
+                    eventsByDay[formatDayString].forEach(event => {
+                        eventsHTML += `<p class="event-title">${event}</p>`;
+                    });
+                }
 
-                // Solicitar eventos para el día actual
-                const dayString = `${year}-${month + 1}-${dayI}`;
-                const fullDate = new Date(dayString)
-                const noHours = fullDate.toISOString().split('T')[0]
-                // const adjustDate = `${fixMonth(adjustDateByDays(dayString, 1))}`
-                promises.push(
-                    // dailyEvents(adjustDateByDays(dayString, 1), window.globalVariable).then(({ personalEvents, groupEvents }) => {
-                    //     const dayElement = document.querySelector(`#day-${year}-${month + 1}-${dayI}`);
-                    //     if (dayElement) {
-                    //         let eventsHTML = "";
-                    //         personalEvents.forEach(event => {
-                    //             eventsHTML += `<p class="event-title">${event.title}</p>`;
-                    //         });
-                    //         groupEvents.forEach(event => {
-                    //             eventsHTML += `<p class="event-title2">${event.title}</p>`;
-                    //         });
-                    //         dayElement.innerHTML += eventsHTML; // Añade los eventos sin reemplazar
-                    //     }
-                    // }).catch(error => {
-                    //     console.error('Error:', error.message);
-                    // })
-                    // dailyEvents(adjustDateByDays(dayString, 1)).then((dayEvents) => {
-                    dailyEvents(noHours).then((dayEvents) => {
-                        const dayElement = document.querySelector(`#day-${dayString}`);
-                        if (dayElement) {
-                            let eventsHTML = "";
-                            dayEvents.forEach(event => {
-                                eventsHTML += `<p class="event-title">${event[0]}</p>`;
-                            });
-                            dayElement.innerHTML += eventsHTML; // Añade los eventos sin reemplazar
-                        }
-                    }).catch(error => {
-                        console.error('Error:', error.message);
-                    })
-                );
+                lit += `<li class="${isToday}" id="day-${formatDayString}">${i}${eventsHTML}</li>`;
             }
 
             // Agregar las fechas del próximo mes
@@ -95,9 +152,6 @@ export const manipulate = async () => {
             currdate.innerText = `${months[month]} ${year}`;
             day.innerHTML = lit;
 
-            // Esperar a que todas las promesas se resuelvan
-            await Promise.all(promises);
-
             resolve();
         } catch (error) {
             console.error('Error en manipulate:', error);
@@ -105,6 +159,24 @@ export const manipulate = async () => {
         }
     });
 };
+
+function formatearFecha(fecha) {
+    // Dividir la fecha en partes (año, mes, día)
+    const partes = fecha.split("-");
+    let año = partes[0];
+    let mes = partes[1];
+    let día = partes[2];
+  
+    // Comprobar si el mes tiene una sola cifra
+    if (mes.length === 1) {
+      mes = "0" + mes; // Agregar un 0 al principio
+    }
+  
+    // Unir las partes nuevamente
+    const fechaFormateada = `${año}-${mes}-${día}`;
+    return fechaFormateada;
+  }
+
 
 
 
@@ -184,110 +256,95 @@ export function closeMenu() {
 }
 
 // Listar eventos
-export function dailyEvents(day, url) {
-    var urlFinal
-    if (url) {
-        if (url !== "") {
-            urlFinal = `http://127.0.0.1:5000/list_events/${chord_id}/${username}/`
-        }
-    } else {
-        urlFinal = `http://127.0.0.1:5000/list_events/${chord_id}/${username}/`
-    }
-    return fetch(urlFinal, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-    })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => {
-                    throw new Error(`Error al obtener eventos: ${err.detail || err}`);
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            let data1 = data.split('\n')
-            if (data.length === 0) {
-                data1 = data
-            }
-            const dayEvents = data1.filter(event0 => {
-                console.log(event0)
-                const event2 = event0.replace(/^\(/, "[").replace(/\)$/, "]"); // Convertir a array JSON
-                console.log(event2)
-                const event1 = JSON.parse(event2)
-                console.log(event1)
+// export function dailyEvents(day, url) {
+//     fetch(`http://127.0.0.1:5000/list_events/${chord_id}/${username}/`, {
+//         method: 'GET',
+//         headers: {
+//             'Content-Type': 'application/json',
+//         },
+//     })
+//         .then(response => {
+//             if (!response.ok) {
+//                 return response.json().then(err => {
+//                     throw new Error(`Error al obtener eventos: ${err.detail || err}`);
+//                 });
+//             }
+//             return response.json();
+//         })
+//         .then(data => {
+//             let data1 = data ? data.split('|').map(item => item.trim()) : [];
+//             const dayEvents = data1.filter(event0 => {
+//                 const event2 = event0
+//                     .replace(/^\(/, "[")  // Reemplaza paréntesis de apertura
+//                     .replace(/\)$/, "]")  // Reemplaza paréntesis de cierre
+//                     .replace(/(\d+),\s*([a-zA-Z0-9_]+)/, '$1, "$2"'); // Agrega comillas a los strings
+        
+//                 const event1 = JSON.parse(event2)
 
-                const date = Date(event1[1])
-                console.log("Dia en el calendario", day, "Dia del evento", date)
-                return date == day
-            })
-            // const targetDate = new Date(fixHourZone(`${day}T00:00:00Z`, -19)); // Forzar formato UTC
-            // const targetDateEnd = new Date(fixHourZone(`${day}T00:00:00Z`, 5));
-
-            // console.log("DATA", data);
-            // console.log()
-            
-            // const groupEvents = data.events.filter(event => {
-            //     console.log("EVENTO", event)
-            //     // Object { date: "2025-02-15", group_id: null, id: 3, name: "asd", owner_id: 11, privacy: "public", status: "pending" }
-            //     const start = new Date(fixHourZone(event.start_time, 5));
-            //     const end = new Date(fixHourZone(event.end_time, 5));
-
-            //     const initCalendarDay = dateToInt(targetDate);
-            //     const endCalendarDay = dateToInt(targetDateEnd);
-            //     const normalizedStart = dateToInt(start);
-            //     const normalizedEnd = dateToInt(end);
-
-            //     console.log("testing", start)
-            //     console.log("testing", end)
-            //     console.log("----------------------------")
-
-            //     // Empieza y termina antes
-            //     const case1 = (initCalendarDay >= normalizedStart && initCalendarDay >= normalizedEnd)
-
-            //     // Empieza y termina despues
-            //     const case2 = (endCalendarDay <= normalizedStart && endCalendarDay <= normalizedEnd)
-                
-            //     return !(case1 || case2)
-            //     // const start = new Date(event.start_time);
-            //     // const end = new Date(event.end_time);
-
-            //     // const normalizedTarget = Date.UTC(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
-            //     // const normalizedStart = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
-            //     // const normalizedEnd = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
-
-            //     // return normalizedTarget >= normalizedStart && normalizedTarget <= normalizedEnd;
-            // });
-
-            // const personalEvents = data.events.filter(event => {
-            //     const start = new Date(fixHourZone(event.start_time, 5));
-            //     const end = new Date(fixHourZone(event.end_time, 5));
-
-            //     const initCalendarDay = dateToInt(targetDate);
-            //     const endCalendarDay = dateToInt(targetDateEnd);
-            //     const normalizedStart = dateToInt(start);
-            //     const normalizedEnd = dateToInt(end);
-
-            //     // Empieza y termina antes
-            //     const case1 = (initCalendarDay >= normalizedStart && initCalendarDay >= normalizedEnd)
-
-            //     // Empieza y termina despues
-            //     const case2 = (endCalendarDay <= normalizedStart && endCalendarDay <= normalizedEnd)
-                
-            //     return !(case1 || case2)
-            // });
-            
-
-            // return { personalEvents, groupEvents };
-            console.log("Eventos del dia", dayEvents)
-            return dayEvents
-        })
-        .catch(error => {
-            console.error('Error:', error.message);
+//                 const date = Date(event1[1])
+//                 console.log("Dia en el calendario", day, "Dia del evento", date)
+//                 return date == day
+//             })
+//             console.log("Eventos del dia", dayEvents)
+//             return dayEvents
+//         })
+//         .catch(error => {
+//             console.error('Error:', error.message);
+//         });
+// }
+export async function getMonthlyEvents(year, month) {
+    try {
+        const response = await fetch(`http://127.0.0.1:5000/list_events/${chord_id}/${username}/`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
         });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`Error al obtener eventos: ${errorData.detail || errorData}`);
+        }
+
+        const data = await response.json();
+        let eventsByDay = {};
+
+        if (data) {
+            data.split('|').forEach(eventRaw => {
+                const regex = /\('([^']+)', datetime.datetime\((\d+), (\d+), (\d+), (\d+), (\d+)\)\)/;
+                const match = eventRaw.match(regex);
+                
+                if (match) {
+                    // Extraer los valores
+                    const stringValue = match[1];
+                    const year = parseInt(match[2], 10);
+                    const month = parseInt(match[3], 10) - 1; // Los meses en JavaScript son 0-indexados
+                    const day = parseInt(match[4], 10);
+                    const hour = parseInt(match[5], 10);
+                    const minute = parseInt(match[6], 10);
+                
+                    // Crear el objeto Date
+                    const dateValue = new Date(year, month, day, hour, minute);
+                
+                    // Crear la lista
+                    const eventData = [stringValue, dateValue];
+                
+                    console.log(eventData);
+
+                const eventDate = new Date(eventData[1]).toISOString().split('T')[0];
+
+                if (!eventsByDay[eventDate]) {
+                    eventsByDay[eventDate] = [];
+                }
+                eventsByDay[eventDate].push(eventData[0]);
+            }});
+        }
+
+        return eventsByDay;  
+    } catch (error) {
+        console.error('Error en getMonthlyEvents:', error.message);
+        return {};
+    }
 }
+
 
 export function adjustDateByDays(dateString, days) {
     const date = new Date(dateString);

@@ -192,7 +192,7 @@ class Database:
         Lista los contactos de un usuario.
         """
         contacts = self.session.query(Contact).filter(Contact.owner_id == user_id)
-        return [( contact.contact_name,  contact.id) for contact in contacts]
+        return [(contact.id, contact.contact_name) for contact in contacts]
     
     def delete_contact(self, contact_id: int) -> bool:
         """

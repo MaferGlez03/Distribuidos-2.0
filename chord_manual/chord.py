@@ -115,14 +115,14 @@ class NodeReference:
                     print(f"📤 Datos enviados: {op}|{data}")
 
                     # ✅ Recibir respuesta
-                    response = ssl_sock.recv(1024)
+                    response = ssl_sock.recv(10240)
                     print(f"📥 Respuesta recibida: {response.decode('utf-8')}")
                     return response
 
         except Exception as e:
             print(f"❌ Error en send_data_tcp: {e}")
             return b''
-        
+
     def send_data_tcp(self, op, data):
         try:
             # 🔹 Cambiar a TCP (SOCK_STREAM)
@@ -131,7 +131,7 @@ class NodeReference:
                 # 🔹 Enviar mensaje correctamente
                 s.sendall(f'{op}|{data}'.encode('utf-8'))
                 # print(f"Mensaje enviado correctamente vía TCP. Operation: {op} Data: {data}")
-                return s.recv(1024)
+                return s.recv(10240)
         except Exception as e:
             print(f"Mensaje fallido. Operation: {op} Data: {data} Error: {e}")
             return False
@@ -161,8 +161,21 @@ class ChordNode:
         self.finger_update_queue = queue.Queue()
         # Cola de actualizaciones de finger table cuando se cae un nodo
         self.finger_update_fall_queue = queue.Queue()
-
+        # try:
+        #     print("REINICIANDO BD")
+        #     DB_FILE = "/home/app/agenda.db"
+        #     if os.path.exists(DB_FILE):
+        #         os.remove(DB_FILE)
+        #         print(f"Se ha eliminado la base de datos {DB_FILE} para forzar reinicio.")
+        #         os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
+        #     else:
+        #         while True:
+        #             pass
+        # except Exception as e:
+        #     print("INICIADA BD DE CERO:", e)
         self.db = Database()
+
+        # self.handler_data.reiniciar_sesion()
 
         threading.Thread(target=self.start_tcp_server).start()
         threading.Thread(target=self.start_broadcast).start()
@@ -283,7 +296,7 @@ class ChordNode:
                 self.find_first()
                 time.sleep(3)
                 local_response = self.first_node.send_data_tcp(CREATE_GROUP_EVENT, f'{id}|{name}|{date}|{owner}|{group_id}')
-                return local_response.decode()    
+                return local_response.decode()
         else:
             # Registrar localmente
             print("Voy a la finger table")
@@ -469,7 +482,7 @@ class ChordNode:
             else:
                 self.find_first()
                 time.sleep(3)
-                local_response = self.first_node.send_data_tcp(CREATE_GROUP, f"{id}|{owner_id}|{name}")
+                local_response = self.first_node.send_data_tcp(CREATE_GROUP, f"{id}|{name}|{owner_id}")
                 return local_response.decode()
         elif id < self.id:
             if id > self.predecessor.id or self.first:
@@ -477,7 +490,7 @@ class ChordNode:
             else:
                 self.find_first()
                 time.sleep(3)
-                local_response = self.first_node.send_data_tcp(CREATE_GROUP, f"{id}|{owner_id}|{name}")
+                local_response = self.first_node.send_data_tcp(CREATE_GROUP, f"{id}|{name}|{owner_id}")
                 return local_response.decode()
         else:
             print("Voy a la finger table")
@@ -694,12 +707,12 @@ class ChordNode:
     def _list_events(self, user_id: int) -> str:
         real_id = self.db.getUserID(user_id)
         events = self.db.list_events(real_id)
-        return "\n".join([str((event.name, event.date)) for event in events])
+        return "|".join([str((event.name, event.date)) for event in events])
 
     def _list_events_pending(self, user_name: int) -> str:
         user_id = self.db.getUserID(user_name)
         events = self.db.list_events_pending(user_id)
-        return "\n".join([str((event.id,event.name, event.date,event.owner_id, event.privacy, event.group_id)) for event in events])
+        return "|".join([str((event.id,event.name, event.date,event.owner_id, event.privacy, event.group_id)) for event in events])
 
     def _add_contact(self, contact_name: str, owner_id: int) -> str:
         user_id = self.db.getUserID(contact_name)
@@ -713,7 +726,7 @@ class ChordNode:
     def _list_contacts(self, user_id: int) -> str:
         contacts_dict = self.db.list_contacts(user_id)
         contacts = [str(c) for c in contacts_dict]
-        return "\n".join(contacts)
+        return "|".join(contacts)
 
     def _create_group(self, owner_id: int, name: str) -> str:
         success = self.db.create_group(name, owner_id)
@@ -740,21 +753,20 @@ class ChordNode:
         real_id = self.db.getUserID(user_id)
         agenda = self.db.list_groups(real_id)
         groups_list = [str((g[0],  g[1])) for g in agenda]
-        print( groups_list)
-        return "\n".join(groups_list)
+        return "|".join(groups_list)
 
     def _list_member(self, group_id: int) -> str:
         agenda = self.db.list_members(group_id)
         agenda0 = [str(a) for a in agenda]
-        return " \n ".join(agenda0)
+        return "|".join(agenda0)
 
     def _list_personal_agenda(self, user_id: int) -> str:
         agenda = self.db.list_personal_agenda(user_id)
-        return " | ".join(agenda)
+        return "|".join(agenda)
 
     def _list_group_agenda(self, group_id: int, user_id: int) -> str:
         agenda = self.db.list_group_agenda(group_id, user_id)
-        return " | ".join(agenda)
+        return "|".join(agenda)
 # endregion
 # region CHORD
     def start_tcp_server_(self):
@@ -779,7 +791,7 @@ class ChordNode:
                 threading.Thread(target=self.serve_client, args=(ssl_conn,), daemon=True).start()
 
     def _handle_client_tcp(self, conn: socket.socket, addr: tuple):
-        data = conn.recv(1024).decode().split('|')  # operation | id | port
+        data = conn.recv(10240).decode().split('|')  # operation | id | port
         option = data[0]
         print(f"ADDR[0]: {addr[0]} | ADDR[1]: {addr[1]} | OPERATION: {option} | DATA: {data}")
         if option == '':
@@ -792,7 +804,7 @@ class ChordNode:
             self.finger_update_queue.put((id, TCP_PORT))
             return
         elif option == REPLICATE:
-            real_data = conn.recv(1024).decode().split('$$')
+            real_data = conn.recv(10240).decode().split('$$')
             for datas in real_data[1:]:
                 self.handler_data.create(datas)
         elif option == LOGIN:
@@ -812,24 +824,16 @@ class ChordNode:
             # group_id = int(data[6]) if len(data) > 6 else None
             group_id = None
             response = self.create_event(
-                id, name, date,owner, privacy, group_id)
+                id, name, date, owner, privacy, group_id)
         elif option == CREATE_GROUP_EVENT:
-            # Crear un evento
-            id = int(data[1])
-            name = data[2]
-            date = data[3]
-            owner = data[4]
-            group_id = int(data[5]) if len(data) > 5 else None
-            response = self.create_group_event(
-                event_id, name, date,owner, group_id)
-        elif option == CREATE_INDIVIDUAL_EVENT:
             # Crear un evento
             event_id = int(data[1])
             name = data[2]
             date = data[3]
-            group_id = int(data[4]) if len(data) > 4 else None
-            response = self.create_individual_event(
-                event_id, name, date, group_id)
+            owner = data[4]
+            group_id = int(data[5])
+            response = self.create_group_event(
+                event_id, name, date, owner, group_id)
         elif option == CONFIRM_EVENT:
             # Confirmar un evento
             chord_id = int(data[1])
@@ -1049,19 +1053,18 @@ class ChordNode:
                         # nos conectamos x via TCP al predecesor
                         s.connect((self.predecessor.ip, self.predecessor.port))
                         # configuramos el socket para lanzar un error si no recibe respuesta en 5 segundos
-                        s.settimeout(10)
+                        s.settimeout(20)
                         print("conecto")
                         op = CHECK_PREDECESSOR
                         data = f"0|0"
                         # chequeamos que no se ha caido el predecesor
                         s.sendall(f'{op}|{data}'.encode('utf-8'))
                         # guardamos la info recibida
-                        repli_pred = s.recv(1024).decode()
+                        repli_pred = s.recv(10240).decode()
+                        print(f"repli_pred: {repli_pred}")
                         self.repli_pred = repli_pred.split('|¡|')[0]
                         # guardamos el id del predecesor de nuestro predecesor
                         ip_pred_pred = repli_pred.split('|¡|')[1]
-                        print(f"repli_pred: {repli_pred}")
-                        print(f"self.repli_pred: {self.repli_pred}")
                         print(f"ip_pred_pred: {ip_pred_pred}")
 
                 except:
@@ -1081,9 +1084,9 @@ class ChordNode:
                         try:
                             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                                 s.connect((ip_pred_pred, TCP_PORT))
-                                s.settimeout(10)
+                                s.settimeout(20)
                                 s.sendall(f'{FALL_SUCC}|{self.ip}|{self.tcp_port}'.encode('utf-8'))
-                                s.recv(1024).decode()
+                                s.recv(10240).decode()
                         except:
                             print(f"El servidor {ip_pred_pred} se ha desconectado tambien")
                             #replicar data
@@ -1110,7 +1113,7 @@ class ChordNode:
                         self.finger_table = self.create_finger_table()
 
                 # self.replicate()
-                time.sleep(5)
+                time.sleep(10)
 
     def send_data_broadcast(self, op, data):
         """
@@ -1156,7 +1159,7 @@ class ChordNode:
                 while True:
                     time.sleep(1)
                     # Recibir datos
-                    datos, direccion = s.recvfrom(1024)
+                    datos, direccion = s.recvfrom(10240)
                     mensaje = datos.decode('utf-8')
                     if mensaje == "DISCOVER":
                         response = f"{self.ip}:{self.tcp_port}".encode()
@@ -1441,6 +1444,7 @@ class ChordNode:
         if self.predecessor.id == self.id and self.successor.id == self.id:
             return
         data = self.successor.send_data_tcp(REQUEST_DATA, f"{self.id}").decode()
+        print("ESTOY REPLICANDO MI DATA")
         self.handler_data.create(data)
         self.handler_data.data(True, self.predecessor.id)
 

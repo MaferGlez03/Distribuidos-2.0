@@ -45,7 +45,7 @@ def connect_to_server(server_ip, server_port, operation, data):
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             s.connect((server_ip, int(server_port)))  # 🔹 Conectar al servidor TCP
             s.sendall(f'{operation}|{data}'.encode('utf-8'))
-            return s.recv(1024).decode('utf-8').strip()
+            return s.recv(10240).decode('utf-8').strip()
     except Exception as e:
         return f"Error en la conexión: {e}"
 
@@ -196,35 +196,36 @@ def create_event():
     else:
         return jsonify({'message': 'Error al crear el evento'}), 400
 
-# Endpoint para crear evento grupal
+#! Endpoint para crear evento grupal
 @app.route('/create_group_event/', methods=['POST'])
 def create_group_event():
     server_ip = available_server()
     data = request.get_json()
-    name = data.get('name')
-    date = data.get('date')
+    event_name = data.get('title')
+    event_date = data.get('start_time')  # Formato: 'YYYY-MM-DD'
     owner_id = data.get('owner_id')
+    chord_id = data.get('chord_id')
     group_id = data.get('group_id')
-    response = connect_to_server(server_ip, 8000, "create_event", f"{chord_id}|{name}|{date}|{user_name}|{group_id}")
+    response = connect_to_server(server_ip, 8000, "create_group_event", f"{chord_id}|{event_name}|{event_date}|{owner_id}|{group_id}")
     bool_response = bool(response)
     if bool_response:
         return jsonify({'message': 'Evento grupal creado exitosamente'}), 201
     else:
         return jsonify({'message': 'Error al crear el evento grupal'}), 400
 
-# Endpoint para crear evento individual
-@app.route('/create_individual_event/', methods=['POST'])
-def create_individual_event():
-    server_ip = available_server()
-    data = request.get_json()
-    name = data.get('name')
-    date = data.get('date')
-    owner_id = data.get('owner_id')
-    contact_id = data.get('contact_id')
-    if server.create_individual_event(owner_id,name, date, contact_id)==f"Event created: {name}":
-        return jsonify({'message': 'Evento individual creado exitosamente'}), 201
-    else:
-        return jsonify({'message': 'Error al crear el evento individual'}), 400
+# # Endpoint para crear evento individual
+# @app.route('/create_individual_event/', methods=['POST'])
+# def create_individual_event():
+#     server_ip = available_server()
+#     data = request.get_json()
+#     name = data.get('name')
+#     date = data.get('date')
+#     owner_id = data.get('owner_id')
+#     contact_id = data.get('contact_id')
+#     if server.create_individual_event(owner_id,name, date, contact_id)==f"Event created: {name}":
+#         return jsonify({'message': 'Evento individual creado exitosamente'}), 201
+#     else:
+#         return jsonify({'message': 'Error al crear el evento individual'}), 400
 
 #! Endpoint para confirmar evento
 @app.route('/confirm_event/<int:event_id>/<int:chord_id>/<int:user_id>/', methods=['POST'])
@@ -299,6 +300,7 @@ def remove_member_from_group(group_id, member_id, chord_id, username):
 #! Listar grupos
 @app.route('/list_groups/<int:chord_id>/<string:username>/', methods=['GET'])
 def list_groups(chord_id, username):
+    app.logger.info(f"Username: {username}")
     server_ip = available_server()
     response = connect_to_server(server_ip, 8000, "list_groups", f"{chord_id}|{username}")
     app.logger.info(f"Respuesta del servidor al listar grupos: {response}")

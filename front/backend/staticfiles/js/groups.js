@@ -6,7 +6,7 @@ console.log("sessionStorage", sessionStorage)
 console.log("localStorage", localStorage)
 
 const userData = localStorage.getItem('user_id') || sessionStorage.getItem('user_id');
-const username = localStorage.getItem('username') || sessionStorage.getItem('username');
+const username = (localStorage.getItem('username') || sessionStorage.getItem('username')).replace(/^["'](.*)["']$/, '$1');
 const chord_id = parseInt(localStorage.getItem('chord_id') || sessionStorage.getItem('chord_id'), 10);
 const idActualUser = parseInt(userData, 10);
 
@@ -41,7 +41,6 @@ document.getElementById('btn_create_group').addEventListener('click', function (
     }
 
     // Enviar los datos al endpoint
-    // fetch('http://127.0.0.1:8000/api/groups/', {
     fetch('http://127.0.0.1:5000/create_group/', {
         method: 'POST', 
         headers: {
@@ -87,10 +86,9 @@ document.getElementById('list_groups').addEventListener('click', function () {
             return response.json();
         })
         .then(data => {
-            let data1 = data.split('\n')
-            if (data.length === 0) {
-                data1 = data
-            }
+            // (int, string)|(int, string)|(int, string)...
+            let data1 = data ? data.split('|').map(item => item.trim()) : [];
+
             // Mostrar los contactos en la consola o en la UI
             console.log('Grupos obtenidos:', data);
 
@@ -99,8 +97,17 @@ document.getElementById('list_groups').addEventListener('click', function () {
             groupList.innerHTML = ''; // Limpiar cualquier contenido previo
 
             data1.forEach(group0 => {
-                const group1 = group0.replace(/^\(/, "[").replace(/\)$/, "]");
-                const group = JSON.parse(group1)
+                const group1 = group0
+                    .replace(/^\(/, "[")  // Reemplaza paréntesis de apertura
+                    .replace(/\)$/, "]")  // Reemplaza paréntesis de cierre
+                    .slice(1, -1).split(',');
+                // Limpiar los elementos (eliminar espacios y comillas)
+                let group = group1.map(g => {
+                    // Eliminar espacios y comillas
+                    g = g.trim().replace(/'/g, '').replace(/"/g, '');
+                    // Convertir a número si es posible
+                    return isNaN(g) ? g : Number(g);
+                });
                 const Item = document.createElement('li');
                 
                 // Nombre del grupo
@@ -126,6 +133,20 @@ document.getElementById('list_groups').addEventListener('click', function () {
                             'Content-Type': 'application/json',
                         },
                     })
+                        // .then(async response => {
+                        //     if (!response.ok) {
+                        //         const text = await response.text(); // Obtén el texto para verificar qué es
+                        //         console.error("Error recibido:", text);
+                        //         throw new Error(`Error al obtener grupos: ${text}`);
+                        //     }
+                        //     return response.json();
+                        // })
+                        // .then(data => {
+                        //     console.log("JSON parseado correctamente:", data);
+                        // })
+                        // .catch(error => {
+                        //     console.error("Error al procesar la respuesta:", error);
+                        // });
                         .then(response => {
                             if (!response.ok) {
                                 // Manejar errores si la respuesta no es exitosa
@@ -171,25 +192,31 @@ function openGroupInfoMenu(group, members) {
     // menu7 abierto
     const menu = document.getElementById('menu7');
     menu.innerHTML = ''; // Limpiar cualquier contenido previo
-    if (members.length === 0) {
-        let members1 = members
-    }
-    else{
-        let members1 = members.split('\n')
-    } 
+    
+    let members1 = members ? members.split('|').map(item => item.trim()) : [];
+    
     // Nombre del grupo
     const nameItem = document.createElement('h5');
     nameItem.textContent = `${group[1]}`;
-
-    hierarchical.appendChild(checkbox);
 
     // Miembros
     const membersList = document.createElement('ul');
     membersList.className = 'get-list'
     // membersList.textContent = 'Members:'
     members1.forEach(member0 => {
-        const member1 = member0.replace(/^\(/, "[").replace(/\)$/, "]");
-        const member = JSON.parse(member1)
+        // (int, string) | (int, string) ...
+        const member1 = member0
+            .replace(/^\(/, "[")  // Reemplaza paréntesis de apertura
+            .replace(/\)$/, "]")  // Reemplaza paréntesis de cierre
+            .slice(1, -1).split(',');
+        
+        // Limpiar los elementos (eliminar espacios y comillas)
+        let member = member1.map(m => {
+            // Eliminar espacios y comillas
+            m = m.trim().replace(/'/g, '').replace(/"/g, '');
+            // Convertir a número si es posible
+            return isNaN(m) ? m : Number(m);
+        });
         const memberList = document.createElement('li');
         memberList.textContent = `Member: ${username}`;
         membersList.appendChild(memberList)
@@ -283,7 +310,6 @@ function openGroupInfoMenu(group, members) {
     nameItem.appendChild(trashIcon)
     // menu.appendChild(admin)
     // menu.appendChild(description)
-    menu.appendChild(hierarchical)
     menu.appendChild(membersList)
     divIcons.appendChild(addMember)
     divIcons.appendChild(leaveGroup)
@@ -346,10 +372,7 @@ function addMemberFunction(id, group) {
             return response.json();
         })
         .then(data => {
-            let data1 = data.split('\n')
-            if (data.length === 0) {
-                data1 = data
-            }
+            let data1 = data ? data.split('|').map(item => item.trim()) : [];
             // Mostrar los contactos en la consola o en la UI
             console.log('Contactos obtenidos:', data);
             // Aquí puedes manipular los datos para mostrarlos en la página
@@ -358,9 +381,19 @@ function addMemberFunction(id, group) {
 
             data1.forEach(contact0 => {
                 const listItem = document.createElement('li');
-                const contact1 = contact0.replace(/^\(/, "[").replace(/\)$/, "]");
-                const contact = JSON.parse(contact1)
-                listItem.textContent = `${contact[0]}`;
+                const contact1 = contact0
+                    .replace(/^\(/, "[")  // Reemplaza paréntesis de apertura
+                    .replace(/\)$/, "]")  // Reemplaza paréntesis de cierre
+                    .slice(1, -1).split(',');
+    
+                // Limpiar los elementos (eliminar espacios y comillas)
+                let contact = contact1.map(c => {
+                    // Eliminar espacios y comillas
+                    c = c.trim().replace(/'/g, '').replace(/"/g, '');
+                    // Convertir a número si es posible
+                    return isNaN(c) ? c : Number(c);
+                });
+                listItem.textContent = `${contact[1]}`;
                 // Crear el ícono de basura
                 const addMemberIcon = document.createElement('i');
                 addMemberIcon.className = 'fas fa-plus';
@@ -369,7 +402,7 @@ function addMemberFunction(id, group) {
                 addMemberIcon.style.marginLeft = '15px';
 
                 addMemberIcon.addEventListener('click', function () {
-                    addMemberEndpoint(group.id, contact)
+                    addMemberEndpoint(group[0], contact)
                 })
 
                 // Agregar el ícono al elemento de lista
@@ -406,7 +439,7 @@ function addMemberEndpoint(group_id, contact) {
 
     const memberData = {
         group_id: group_id,
-        user_id: contact[1],
+        user_id: contact[0],
         role: 'member',
         chord_id: chord_id
     }
@@ -564,10 +597,7 @@ export function selectUserEvent(id) {
             return response.json();
         })
         .then(data => {
-            let data1 = data.split('\n')
-            if (data.length === 0) {
-                data1 = data
-            }
+            let data1 = data ? data.split('|').map(item => item.trim()) : [];
             // Mostrar los contactos en la consola o en la UI
             console.log('Contactos obtenidos:', data);
             // Aquí puedes manipular los datos para mostrarlos en la página
@@ -575,9 +605,18 @@ export function selectUserEvent(id) {
             contactList.innerHTML = ''; // Limpiar cualquier contenido previo
 
             data1.forEach(contact0 => {
-                const listItem = document.createElement('li');
-                const contact1 = contact0.replace(/^\(/, "[").replace(/\)$/, "]");
-                const contact = JSON.parse(contact1)
+                const contact1 = contact0
+                    .replace(/^\(/, "[")  // Reemplaza paréntesis de apertura
+                    .replace(/\)$/, "]")  // Reemplaza paréntesis de cierre
+                    .slice(1, -1).split(',');
+        
+                // Limpiar los elementos (eliminar espacios y comillas)
+                let contact = contact1.map(c => {
+                    // Eliminar espacios y comillas
+                    c = c.trim().replace(/'/g, '').replace(/"/g, '');
+                    // Convertir a número si es posible
+                    return isNaN(c) ? c : Number(c);
+                });
                 listItem.textContent = `${contact[0]}`;
 
                 // Crear el ícono de basura
@@ -646,10 +685,8 @@ export function selectGroupEvent() {
             return response.json();
         })
         .then(data => {
-            let data1 = data.split('\n')
-            if (data.length === 0) {
-                data1 = data
-            }
+            // (int, string)|(int, string)|(int, string)...
+            let data1 = data ? data.split('|').map(item => item.trim()) : [];
             // Mostrar los contactos en la consola o en la UI
             console.log('Grupos obtenidos:', data);
             // Aquí puedes manipular los datos para mostrarlos en la página
@@ -657,8 +694,18 @@ export function selectGroupEvent() {
             groupList.innerHTML = ''; // Limpiar cualquier contenido previo
 
             data1.forEach(group0 => {
-                const group1 = group0.replace(/^\(/, "[").replace(/\)$/, "]");
-                const group = JSON.parse(group1)
+                const group1 = group0
+                    .replace(/^\(/, "[")  // Reemplaza paréntesis de apertura
+                    .replace(/\)$/, "]")  // Reemplaza paréntesis de cierre
+                    .slice(1, -1).split(',');
+
+                // Limpiar los elementos (eliminar espacios y comillas)
+                let group = group1.map(c => {
+                    // Eliminar espacios y comillas
+                    c = c.trim().replace(/'/g, '').replace(/"/g, '');
+                    // Convertir a número si es posible
+                    return isNaN(c) ? c : Number(c);
+                });
                 const listItem = document.createElement('li');
                 listItem.textContent = `${group[1]}`;
 
