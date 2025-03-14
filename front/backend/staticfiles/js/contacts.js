@@ -1,4 +1,10 @@
 import { closeMenu } from "./calendar.js";
+import {adjustDateByDays} from './calendar.js';
+import {manipulate} from './calendar.js';
+
+console.log("sessionStorage Contacts", sessionStorage)
+console.log("localStorage Contacts", localStorage)
+
 
 const userData = localStorage.getItem('user_id') || sessionStorage.getItem('user_id');
 const username = localStorage.getItem('username') || sessionStorage.getItem('username');
@@ -7,6 +13,14 @@ const idActualUser = parseInt(userData, 10);
 console.log("chord_id", chord_id)
 console.log("username", username)
 console.log("idActualUser", idActualUser)
+
+window.globalVariable = '';
+
+// Variables globales
+const overlay2 = document.getElementById('overlay2');
+const overlay3 = document.getElementById('overlay3');
+let activeMenu2 = null; // Para rastrear qué menú está activo en la 2da capa
+let activeMenu3 = null; // Para rastrear qué menú está activo en la 3ra capa
 
 // Adicionar nuevo contacto
 document.getElementById('btn_add_contact').addEventListener('click', function () {
@@ -42,15 +56,11 @@ document.getElementById('btn_add_contact').addEventListener('click', function ()
             alert(error.message);
         });
 })
-.catch(error => {
-    console.error('Error al obtener el ID', error)
-})
 
 // List Contacts
 document.getElementById('list_contacts').addEventListener('click', function () {
     // Realizar la solicitud GET al endpoint de contactos
-    const menu = document.getElementById('menu3');
-    fetch(`http://127.0.0.1:5000/contacts/${idActualUser}/${chord_id}`, {
+    fetch(`http://127.0.0.1:5000/contacts/${idActualUser}/${chord_id}/`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -66,9 +76,13 @@ document.getElementById('list_contacts').addEventListener('click', function () {
             return response.json();
         })
         .then(data => {
+            // (int, string)|(int, string)|(int, string)...
             let data1 = data ? data.split('|').map(item => item.trim()) : [];
             // Mostrar los contactos en la consola o en la UI
             console.log('Contactos obtenidos:', data);
+            // Mostrar los contactos en la consola o en la UI
+            console.log('Contactos obtenidos:', data1);
+
             // Aquí puedes manipular los datos para mostrarlos en la página
             const contactList = document.getElementById('contact-list'); // Asegúrate de tener un contenedor en tu HTML con este ID
             contactList.innerHTML = ''; // Limpiar cualquier contenido previo
@@ -86,7 +100,8 @@ document.getElementById('list_contacts').addEventListener('click', function () {
                     return isNaN(c) ? c : Number(c);
                 });
 
-                listItem.textContent = `${contact[0]}`; //name
+                const listItem = document.createElement('h5');
+                listItem.textContent = `${contact[1]}`; //name
 
                 // Crear el ícono de basura
                 const trashIcon = document.createElement('i');
@@ -94,7 +109,7 @@ document.getElementById('list_contacts').addEventListener('click', function () {
                 trashIcon.style.paddingLeft = '5px'; // Espacio entre el nombre y el ícono
                 trashIcon.addEventListener('click', function () {
                     console.log('Borro')
-                    deleteGroupFunction(contact[1]) //id
+                    deleteGroupFunction(contact[0]) //id
                 })
 
                 // Agregar el ícono al elemento de lista
@@ -109,25 +124,10 @@ document.getElementById('list_contacts').addEventListener('click', function () {
             console.error('Error:', error.message);
             alert(error.message);
         });
-
-    activeMenu3 = document.getElementById('menu7');
-
-    // Muestra el overlay y el menú flotante correspondiente
-    if (menu) {
-        overlay3.style.display = 'flex';
-        menu.style.display = 'flex';
-        activeMenu3 = menu; // Guarda el menú activo
-    }
-
-    // Evento para cerrar menús
-    overlay3.addEventListener('click', closeMenu3);
-    document.querySelectorAll('.closeMenu3').forEach(button => {
-        button.addEventListener('click', closeMenu3);
-    });
 });
 
 function deleteGroupFunction(contactId) {
-    fetch(`http://127.0.0.1:5000/contacts/${contactId}/delete/${contactId}`, {
+    fetch(`http://127.0.0.1:5000/contacts/${contactId}/delete/${chord_id}/`, {
         method: 'DELETE', 
         headers: {
             'Content-Type': 'application/json',

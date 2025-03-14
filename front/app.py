@@ -153,7 +153,7 @@ def add_contact():
         return jsonify({'message': 'Error al agregar el contacto'}), 400
 
 #! Endpoint para listar contactos
-@app.route('/contacts/<int:contact_id>/<int:chord_id>', methods=['GET'])
+@app.route('/contacts/<int:contact_id>/<int:chord_id>/', methods=['GET'])
 def list_contacts(contact_id, chord_id):
     server_ip = available_server()
     response = connect_to_server(server_ip, 8000, "list_contacts", f"{chord_id}|{contact_id}")
@@ -161,7 +161,7 @@ def list_contacts(contact_id, chord_id):
     return jsonify(response), 200
 
 #! Endopoint para eliminar contactos
-@app.route('/contacts/<int:contact_id>/delete/<int:chord_id>', methods=['DELETE'])
+@app.route('/contacts/<int:contact_id>/delete/<int:chord_id>/', methods=['DELETE'])
 def delete_contact(contact_id, chord_id):
     server_ip = available_server()
     response = connect_to_server(server_ip, 8000, "remove_contact", f"{chord_id}|{contact_id}")
@@ -204,8 +204,8 @@ def create_group_event():
     event_name = data.get('title')
     event_date = data.get('start_time')  # Formato: 'YYYY-MM-DD'
     owner_id = data.get('owner_id')
-    chord_id = data.get('chord_id')
     group_id = data.get('group_id')
+    chord_id = data.get('chord_id')
     response = connect_to_server(server_ip, 8000, "create_group_event", f"{chord_id}|{event_name}|{event_date}|{owner_id}|{group_id}")
     bool_response = bool(response)
     if bool_response:
@@ -265,6 +265,7 @@ def create_group():
     group_name = data.get('name')
     chord_id = data.get('chord_id')
     user_id = data.get('user_id')
+    # is_hierarchical = data.get('is_hierarchical')
     response = connect_to_server(server_ip, 8000, "create_group", f"{chord_id}|{group_name}|{user_id}")
     app.logger.info(f"Respuesta del servidor al crear grupo: {response}")
     if response:

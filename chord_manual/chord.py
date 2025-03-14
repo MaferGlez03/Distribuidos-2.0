@@ -302,8 +302,7 @@ class ChordNode:
             print("Voy a la finger table")
             local_response = self._closest_preceding_node(id).send_data_tcp(CREATE_GROUP_EVENT, f'{id}|{name}|{date}|{owner}|{group_id}')
             return local_response.decode()
-    def _create_group_event(self, name: str, date: str,owner:str, group_id=None) -> str:
-        owner_id = self.db.getUserID(owner)
+    def _create_group_event(self, name: str, date: str, owner_id:int, group_id=None) -> str:
         success = self.db.create_group_event(
             name, date, owner_id, group_id)
         print(success)
@@ -751,6 +750,7 @@ class ChordNode:
 
     def _list_group(self, user_id: str) -> str:
         real_id = self.db.getUserID(user_id)
+        print("REAL_ID: ", real_id)
         agenda = self.db.list_groups(real_id)
         groups_list = [str((g[0],  g[1])) for g in agenda]
         return "|".join(groups_list)
@@ -830,7 +830,7 @@ class ChordNode:
             event_id = int(data[1])
             name = data[2]
             date = data[3]
-            owner = data[4]
+            owner = int(data[4])
             group_id = int(data[5])
             response = self.create_group_event(
                 event_id, name, date, owner, group_id)

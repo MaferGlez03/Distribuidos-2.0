@@ -175,7 +175,7 @@ class Database:
         """
         Agrega un contacto a un usuario.
         """
-        if contact_name in [c['contact_name'] for c in self.list_contacts(owner_id)]:
+        if (contact_name, user_id) in self.list_contacts(owner_id):
             self.session.rollback()
             return False  # El contacto ya existe
         contact = Contact(user_id=user_id, contact_name=contact_name, owner_id=owner_id)
@@ -235,6 +235,7 @@ class Database:
         is_admin = self.session.query(GroupMember).filter_by(
             group_id=group_id, user_id=owner_id, role='admin'
         ).first() is not None
+        print("IS ADMIN: ", is_admin)
 
         # Crear el evento
         event = Event(
@@ -284,10 +285,26 @@ class Database:
         """
         Lista los eventos de un usuario (personales y grupales).
         """
+        # events = self.session.query(Event).filter(
+        #     (Event.owner_id == user_id) | ((Event.group_id.in_(
+        #         [l[0] for l in [g for g in self.session.query(GroupMember.group_id).filter_by(user_id=user_id)]]
+        #     )) & Event.status == 'confirmed')
+        # ).all()
+        # lista = [l[0] for l in [g for g in self.session.query(GroupMember.group_id).filter_by(user_id=user_id)]]
+        # print("GRUPOS DE LOS QUE SOY MIEMBRO: ", lista)
+        # print("TODOS LOS EVENTOS: ", [(e.group_id, e.name, e.group_id, e.status) for e in self.session.query(Event)])
+        # print("CONSULTA: ", [(e.group_id, e.name, e.status) for e in events])
+        # # print(f"COMPRUEBA: {type(lista[0])} {lista[0]} {1 in lista}")
+        # Subconsulta para obtener los group_id asociados al user_id
+        subquery = self.session.query(GroupMember.group_id).filter_by(user_id=user_id).scalar_subquery()
+
+        # Consulta principal
         events = self.session.query(Event).filter(
-            (Event.owner_id == user_id) | ((Event.group_id.in_(
-                self.session.query(GroupMember.group_id).filter_by(user_id=user_id)
-            )) & Event.status == 'confirmed')
+            (Event.owner_id == user_id) |  # El usuario es el propietario
+            (
+                (Event.group_id.in_(subquery)) &  # El usuario pertenece a un grupo asociado al evento
+                (Event.status == 'confirmed')  # El evento está confirmado
+            )
         ).all()
         return events
     
@@ -311,7 +328,7 @@ class Database:
         self.session.add(group)
         try:
             self.session.commit()
-            self.add_member_to_group(group.id, owner_id, 'admin')
+            self._add_member_to_group(group.id, owner_id, 'admin')
             return True
         except:
             self.session.rollback()
@@ -321,7 +338,28 @@ class Database:
         """
         Agrega un miembro a un grupo.
         """
-        if user_id in self.list_members(group_id):
+        user_db = session.query(Contact).filter_by(id=user_id).first()
+
+        if (user_db.user_id, self.getUsername(user_db.user_id,)) in self.list_members(group_id):
+            self.session.rollback()
+            return False  # El usuario ya está en el grupo
+        
+        member = GroupMember(group_id=group_id, user_id=user_db.user_id, role=role)
+        self.session.add(member)
+        try:
+            self.session.commit()
+            return True
+        except:
+            self.session.rollback()
+            return False  # El usuario ya está en el grupo
+        
+    def _add_member_to_group(self, group_id: int, user_id: int, role: str = 'member') -> bool:
+        """
+        Agrega un miembro a un grupo.
+        """
+        
+
+        if (user_id, self.getUsername(user_id,)) in self.list_members(group_id):
             self.session.rollback()
             return False  # El usuario ya está en el grupo
         
@@ -352,13 +390,17 @@ class Database:
         """
         Lista los grupos de un usuario.
         """
+        print(user_id)
         groups = self.session.query(GroupMember).filter(GroupMember.user_id == user_id).all()
-
+        print(groups)
         group_ids = [group.group_id for group in groups]
+        print(group_ids)
         group_names = [group.name for group in [x for x in [self.session.query(Group).filter(Group.id == group_id).first() for group_id in group_ids] if x is not None]]
+        print(group_names)
         final = list(zip(group_ids, group_names))
+        print(final)
         return final
-    
+
     def list_members(self, group_id: int) -> list:
         """
         Lista los miembros de un grupo
@@ -372,7 +414,7 @@ class Database:
         """
         group = self.session.query(Group).filter_by(id=group_id).first()
         if group:
-            members = self.list_members(group.id)
+            members = [member[0] for member in self.list_members(group.id)]
             if len(members) < 1:
                 self.session.delete(group)
                 self.session.commit()

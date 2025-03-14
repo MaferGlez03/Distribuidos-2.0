@@ -59,9 +59,9 @@ class HandleData:
                 for group in user.groups:
                     result += 'groups¡'
                     result += f'{group.id}|{group.name}|{group.owner_id}||'
-                    for member in group.members:
-                        result += 'member¡'
-                        result += f'{member.id}|{member.group_id}|{member.user_id}|{member.role}||'
+                    # for member in group.members:
+                    #     result += 'member¡'
+                    #     result += f'{member.id}|{member.group_id}|{member.user_id}|{member.role}||'
                 
                 if result[-1] != '¡': result += '|'
                 else: result += '|||'
@@ -112,6 +112,7 @@ class HandleData:
                     info = list(filter(None, content.split('|')))
                     if titulo == 'events':
                         # Crear un evento
+
                         event_id = int(info[0])
                         event_name = info[1]
                         event_date = datetime.strptime(info[2], '%Y-%m-%d %H:%M:%S')
@@ -135,12 +136,16 @@ class HandleData:
                     
                     elif titulo == 'contacts':
                         # Crear un contacto
+                        print(f"INFO: {info}")
                         contact_id = int(info[0])
+                        print(type(contact_id))
                         contact_user_id = int(info[1])
+                        print(f"CONTACT_ID {contact_id}")
                         contact_owner_id = int(info[2]) # Se cambia por user_id
                         contact_name = info[3]
 
                         contact0 = session.query(Contact).filter_by(id=contact_id).first()
+                        print(f"Paso la consulta {contact0}")
                         if not contact0:
                             contact = Contact(
                                 id=contact_id,
@@ -150,20 +155,24 @@ class HandleData:
                             )
                             session.add(contact)
                     
-                    elif titulo == 'groups':
-                        # Crear un grupo
-                        group_id = int(info[0]),
-                        group_name = info[1],
-                        group_owner_id = int(info[2]) # Se cambia por user_id
-
-                        group0 = session.query(Group).filter_by(id=group_id).first()
-                        if not group0:
-                            group = Group(
-                                id=group_id,
-                                name=group_name,
-                                owner_id=user_id
-                            )
-                            session.add(group)
+                    # elif titulo == 'groups':
+                    #     # Crear un grupo
+                    #     print(f"INFO: {info}")
+                    #     group_id = int(info[0])
+                    #     group_name = info[1]
+                    #     group_owner_id = int(info[2]) # Se cambia por user_id
+                    #     print(f"GROUP_ID {group_id}")
+                    #     group0 = session.query(Group).filter_by(id=group_id).first()
+                    #     print(f"Paso la consulta {group0}")
+                    #     if not group0:
+                    #         group = Group(
+                    #             id=group_id,
+                    #             name=group_name,
+                    #             owner_id=group_owner_id
+                    #         )
+                    #         print("Voy a annadir")
+                    #         session.add(group)
+                    #         print("ANNADI A LA BD")
 
                     elif titulo == 'group_members':
                         # Crear un group member
@@ -177,7 +186,7 @@ class HandleData:
                             group_member = GroupMember(
                                 id=group_id,
                                 group_id=group_group_id,
-                                user_id=user_id,
+                                user_id=group_user_id,
                                 role=group_role
                             )
                             session.add(group_member)
@@ -198,7 +207,7 @@ class HandleData:
                     session.query(Contact).filter_by(user_id=user_id).delete()
                     session.query(Group).filter_by(owner_id=user_id).delete()
                     session.query(UserAgenda).filter_by(user_id=user_id).delete()
-                    session.query(GroupMember).filter_by(user_id=user_id).delete()
+                    # session.query(GroupMember).filter_by(user_id=user_id).delete()
                     session.delete(user)
             
             # Guardar los cambios en la base de datos

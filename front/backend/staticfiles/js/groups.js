@@ -30,13 +30,13 @@ document.getElementById('btn_create_group').addEventListener('click', function (
         data = {
             name: GroupName,
             chord_id: chord_id,
-            user_id: idActualUser
+            user_id: idActualUser,
         };
     } else {
         data = {
             name: GroupName,
             chord_id: chord_id,
-            user_id: idActualUser
+            user_id: idActualUser,
         };
     }
 
@@ -69,7 +69,6 @@ document.getElementById('btn_create_group').addEventListener('click', function (
 // List Groups
 document.getElementById('list_groups').addEventListener('click', function () {
     // Realizar la solicitud GET al endpoint de grupos
-    // fetch('http://127.0.0.1:8000/api/groups/', {
     fetch(`http://127.0.0.1:5000/list_groups/${chord_id}/${username}/`, {
         method: 'GET',
         headers: {
@@ -91,6 +90,8 @@ document.getElementById('list_groups').addEventListener('click', function () {
 
             // Mostrar los contactos en la consola o en la UI
             console.log('Grupos obtenidos:', data);
+            // Mostrar los contactos en la consola o en la UI
+            console.log('Grupos limpios:', data1);
 
             // Aquí puedes manipular los datos para mostrarlos en la página
             const groupList = document.getElementById('group-list'); // Asegúrate de tener un contenedor en tu HTML con este ID
@@ -127,7 +128,7 @@ document.getElementById('list_groups').addEventListener('click', function () {
                 // });
                 
                 infoCircle.addEventListener('click', function () {
-                    fetch(`http://127.0.0.1:5000/list_members/${group[0]}/${chord_id}`, {
+                    fetch(`http://127.0.0.1:5000/list_members/${group[0]}/${chord_id}/`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
@@ -194,6 +195,11 @@ function openGroupInfoMenu(group, members) {
     menu.innerHTML = ''; // Limpiar cualquier contenido previo
     
     let members1 = members ? members.split('|').map(item => item.trim()) : [];
+
+    // Mostrar los contactos en la consola o en la UI
+    console.log('Miembros obtenidos:', members);
+    // Mostrar los contactos en la consola o en la UI
+    console.log('Miembros limpios:', members1);
     
     // Nombre del grupo
     const nameItem = document.createElement('h5');
@@ -218,7 +224,7 @@ function openGroupInfoMenu(group, members) {
             return isNaN(m) ? m : Number(m);
         });
         const memberList = document.createElement('li');
-        memberList.textContent = `Member: ${username}`;
+        memberList.textContent = `Member: ${member[1]}`;
         membersList.appendChild(memberList)
 
         // Icono agenda miembro
@@ -356,7 +362,7 @@ function addMemberFunction(id, group) {
     // closeMenu()
     const menu = document.getElementById('menu8');
 
-    fetch(`http://127.0.0.1:5000/contacts/${id}/${chord_id}`, {
+    fetch(`http://127.0.0.1:5000/contacts/${id}/${chord_id}/`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json', // Token para autenticación
@@ -581,7 +587,7 @@ export function selectUserEvent(id) {
     // closeMenu()
     const menu = document.getElementById('menu8');
 
-    fetch(`http://127.0.0.1:5000/contacts/${id}/${chord_id}`, {
+    fetch(`http://127.0.0.1:5000/contacts/${id}/${chord_id}/`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json', // Token para autenticación
